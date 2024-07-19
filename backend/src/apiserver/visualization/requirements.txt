@@ -39,7 +39,7 @@ cachetools==4.2.4
     # via
     #   apache-beam
     #   google-auth
-certifi==2023.7.22
+certifi==2024.7.4
     # via requests
 cffi==1.15.1
     # via argon2-cffi-bindings
@@ -516,7 +516,7 @@ tfx-bsl==1.9.0
     #   tensorflow-model-analysis
 threadpoolctl==3.2.0
     # via scikit-learn
-tornado==6.3.3
+tornado==6.4.1
     # via
     #   -r -
     #   bokeh
@@ -568,3 +568,4 @@ zstandard==0.21.0
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
