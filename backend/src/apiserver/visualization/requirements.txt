@@ -39,7 +39,7 @@ cachetools==4.2.4
     # via
     #   apache-beam
     #   google-auth
-certifi==2023.7.22
+certifi==2024.7.4
     # via requests
 cffi==1.15.1
     # via argon2-cffi-bindings
@@ -193,7 +193,7 @@ httplib2==0.21.0
     #   google-apitools
     #   google-auth-httplib2
     #   oauth2client
-idna==3.4
+idna==3.7
     # via requests
 importlib-metadata==6.8.0
     # via markdown
@@ -205,7 +205,7 @@ ipykernel==5.1.1
     # via
     #   -r -
     #   notebook
-ipython==7.12.0
+ipython==8.10.0
     # via
     #   -r -
     #   ipykernel
@@ -222,13 +222,13 @@ itables==0.1.0
     # via -r -
 jedi==0.19.0
     # via ipython
-jinja2==2.11.3
+jinja2==3.1.4
     # via
     #   -r -
     #   bokeh
     #   nbconvert
     #   notebook
-joblib==0.14.1
+joblib==1.1.1
     # via
     #   scikit-learn
     #   tensorflow-data-validation
@@ -249,7 +249,7 @@ jupyter-core==5.3.1
     #   notebook
 jupyterlab-widgets==1.1.7
     # via ipywidgets
-keras==2.10.0
+keras==2.13.1rc0
     # via tensorflow
 keras-preprocessing==1.1.2
     # via tensorflow
@@ -261,11 +261,11 @@ markupsafe==2.0.1
     # via
     #   -r -
     #   jinja2
-mistune==0.8.4
+mistune==2.0.3
     # via
     #   -r -
     #   nbconvert
-nbconvert==5.5.0
+nbconvert==6.3.0b0
     # via
     #   -r -
     #   notebook
@@ -302,7 +302,7 @@ objsize==0.6.1
     # via apache-beam
 opt-einsum==3.3.0
     # via tensorflow
-orjson==3.9.7
+orjson==3.9.15
     # via apache-beam
 overrides==6.5.0
     # via google-cloud-pubsublite
@@ -375,7 +375,7 @@ ptyprocess==0.7.0
     # via
     #   pexpect
     #   terminado
-pyarrow==5.0.0
+pyarrow==14.0.1
     # via
     #   apache-beam
     #   tensorflow-data-validation
@@ -400,7 +400,7 @@ pygments==2.16.1
     # via
     #   ipython
     #   nbconvert
-pymongo==3.13.0
+pymongo==4.6.3
     # via apache-beam
 pyparsing==3.1.1
     # via
@@ -429,7 +429,7 @@ referencing==0.30.2
     #   jsonschema-specifications
 regex==2023.8.8
     # via apache-beam
-requests==2.31.0
+requests==2.32.2
     # via
     #   apache-beam
     #   gcsfs
@@ -448,7 +448,7 @@ rsa==4.9
     # via
     #   google-auth
     #   oauth2client
-scikit-learn==0.24.2
+scikit-learn==1.5.0
     # via -r -
 scipy==1.10.1
     # via
@@ -471,7 +471,7 @@ six==1.16.0
     #   tensorflow
     #   tensorflow-data-validation
     #   tensorflow-model-analysis
-sqlparse==0.4.4
+sqlparse==0.5.0
     # via google-cloud-spanner
 tensorboard==2.10.1
     # via tensorflow
@@ -479,7 +479,7 @@ tensorboard-data-server==0.6.1
     # via tensorboard
 tensorboard-plugin-wit==1.8.1
     # via tensorboard
-tensorflow==2.10.1
+tensorflow==2.12.0rc1
     # via
     #   -r -
     #   tensorflow-data-validation
@@ -541,7 +541,7 @@ typing-extensions==4.8.0
     #   tensorflow
 uritemplate==3.0.1
     # via google-api-python-client
-urllib3==1.26.16
+urllib3==1.26.19
     # via
     #   google-auth
     #   requests
@@ -549,7 +549,7 @@ wcwidth==0.2.6
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-werkzeug==2.1.2
+werkzeug==3.0.3
     # via tensorboard
 wheel==0.41.2
     # via
@@ -568,3 +568,4 @@ zstandard==0.21.0
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
