@@ -106,7 +106,7 @@ urllib3==1.26.16
     #   requests
 websocket-client==1.6.1
     # via kubernetes
-zipp==3.15.0
+zipp==3.19.1
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
