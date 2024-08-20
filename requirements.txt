@@ -18,7 +18,7 @@ black==21.7b0             # via papermill
 bleach==4.0.0             # via nbconvert
 cached-property==1.5.2    # via h5py
 cachetools==4.2.2         # via apache-beam, google-auth
-certifi==2021.5.30        # via -r -, kfp-server-api, kubernetes, minio, requests
+certifi==2024.7.4        # via -r -, kfp-server-api, kubernetes, minio, requests
 cffi==1.14.6              # via argon2-cffi, google-crc32c
 charset-normalizer==2.0.4  # via requests
 click==7.1.2              # via -r -, black, kfp, papermill, tfx
