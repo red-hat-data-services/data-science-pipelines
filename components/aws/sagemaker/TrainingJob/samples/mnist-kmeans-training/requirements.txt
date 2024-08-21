@@ -2,3 +2,4 @@ numpy==1.23.1
 boto3==1.14.12
 sagemaker==2.1.0
 kfp==1.8.13
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
