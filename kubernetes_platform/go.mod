@@ -1,6 +1,6 @@
 module github.com/kubeflow/pipelines/kubernetes_platform
 
-go 1.21
+go 1.22
 
 require google.golang.org/protobuf v1.33.0
 

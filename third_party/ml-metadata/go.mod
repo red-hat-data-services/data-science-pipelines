@@ -1,6 +1,6 @@
 module github.com/kubeflow/pipelines/third_party/ml-metadata
 
-go 1.21
+go 1.22
 
 require (
 	google.golang.org/grpc v1.56.3
