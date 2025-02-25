@@ -10,13 +10,13 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push" 
       && target_branch == "rhoai-2.8"
-      && ( !".tekton/**".pathChanged() || ".tekton/odh-ml-pipelines-persistenceagent-v2-v2-8-push.yaml".pathChanged() )
+      && ( !".tekton/**".pathChanged() || ".tekton/odh-ml-pipelines-persistenceagent-v2-8-push.yaml".pathChanged() )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: rhoai-v2-8
-    appstudio.openshift.io/component: odh-ml-pipelines-persistenceagent-v2-v2-8
+    appstudio.openshift.io/component: odh-ml-pipelines-persistenceagent-v2-8
     pipelines.appstudio.openshift.io/type: build
-  name: odh-ml-pipelines-persistenceagent-v2-v2-8-on-push
+  name: odh-ml-pipelines-persistenceagent-v2-8-on-push
   namespace: rhoai-tenant
 spec:
   params:
@@ -25,7 +25,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/rhoai/odh-ml-pipelines-persistenceagent-v2-rhel8:{{target_branch}}
+    value: quay.io/rhoai/odh-ml-pipelines-persistenceagent-rhel8:{{target_branch}}
   - name: dockerfile
     value: backend/Dockerfile.konflux.persistenceagent
   - name: path-context
@@ -284,7 +284,7 @@ spec:
         - release=$(tasks.clone-repository.results.commit-timestamp)
         - git.url=$(params.git-url)
         - git.commit=$(params.revision)
-        - io.openshift.tags=odh-ml-pipelines-persistenceagent-v2
+        - io.openshift.tags=odh-ml-pipelines-persistenceagent
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
