@@ -13,4 +13,4 @@ packages:
   - ca-certificates
   - wget
 context:
-  containerfile: ./backend/Dokcerfile.konflux.api 
+  containerfile: ./backend/Dockerfile.konflux.api 
