@@ -12,3 +12,5 @@ packages:
   - openssl
   - ca-certificates
   - wget
+context:
+  containerfile: ./backend/Dokcerfile.konflux.api 
