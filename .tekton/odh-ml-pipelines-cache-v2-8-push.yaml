@@ -23,7 +23,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/rhoai/odh-ml-pipelines-cache-rhel8:{{revision}}
+    value: quay.io/rhoai/odh-ml-pipelines-cache-rhel8:{{target_branch}}
   - name: dockerfile
     value: backend/Dockerfile.konflux.cache
   - name: path-context
