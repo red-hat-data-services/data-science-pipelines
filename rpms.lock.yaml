@@ -522,13 +522,13 @@ arches:
     name: jansson
     evr: 2.14-1.el8
     sourcerpm: jansson-2.14-1.el8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/k/kernel-headers-4.18.0-553.40.1.el8_10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/k/kernel-headers-4.18.0-553.42.1.el8_10.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
-    size: 12400724
-    checksum: sha256:03235a80cf900382456a3e74f26fdfddc14ad354cbd8aea49d501f06c1f72de0
+    size: 12401740
+    checksum: sha256:2479bbeeb815cc73863d9f530eca9a4b98bb4cd49f522b7e1ab4acf2ea55adea
     name: kernel-headers
-    evr: 4.18.0-553.40.1.el8_10
-    sourcerpm: kernel-4.18.0-553.40.1.el8_10.src.rpm
+    evr: 4.18.0-553.42.1.el8_10
+    sourcerpm: kernel-4.18.0-553.42.1.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/k/kmod-libs-25-20.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
     size: 70224
