@@ -19,7 +19,7 @@ COPY ${SOURCE_CODE}/ ./
 
 RUN GO111MODULE=on go build -o /bin/cache_server backend/src/cache/*.go
 
-FROM registry.redhat.io/ubi8/ubi-minimal@sha256:c12e67af6a7e15113d76bc72f10bef2045c026c71ec8b7124c8a075458188a83
+FROM registry.redhat.io/ubi8/ubi-minimal@sha256:c38cc770631788157f8ea989df65ff30359c9f8af3246fef244b32caed9d5862
 WORKDIR /bin
 
 
