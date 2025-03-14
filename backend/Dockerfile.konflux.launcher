@@ -16,7 +16,7 @@
 ARG SOURCE_CODE=.
 
 # Use ubi8/nodejs-14 as base image
-FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:25f2884bcf8ba92eca7613c8dbcbdfb3e4951db2875732b01486628d57623745 as builder
+FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:f9189d8c8d01601c79855e946929380becd6733db71e3fb78b79fcee78c7081a as builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
@@ -32,7 +32,7 @@ COPY ${SOURCE_CODE}/ ./
 
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
 
-FROM registry.redhat.io/ubi8/ubi-minimal@sha256:c38cc770631788157f8ea989df65ff30359c9f8af3246fef244b32caed9d5862
+FROM registry.redhat.io/ubi8/ubi-minimal@sha256:3544399c893a7f32d16220d22d493ae32e61379668e32bc54a74d8eb6ece80fc
 
 WORKDIR /bin
 
