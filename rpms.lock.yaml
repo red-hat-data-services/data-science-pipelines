@@ -9,21 +9,21 @@ arches:
     size: 86972
     checksum: sha256:69fce4b20704ca5e9ef5913693642e0b846d08da550e200c618cd2fb195be03d
     name: clang
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: clang-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/clang-libs-17.0.6-1.module+el8.10.0+20808+e12784c0.x86_64.rpm
     repoid: ubi-8-appstream-rpms
     size: 27563780
     checksum: sha256:284875669249fd1cc9abe0217aca986178dd51cee658ab1057a8c48ae78e45f7
     name: clang-libs
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: clang-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/clang-resource-filesystem-17.0.6-1.module+el8.10.0+20808+e12784c0.noarch.rpm
     repoid: ubi-8-appstream-rpms
     size: 16028
     checksum: sha256:5c78901a5bdaee98a6b8755889c7b97dfc77af84a674eb86d1927cbef4450717
     name: clang-resource-filesystem
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: clang-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/cmake-3.26.5-2.el8.x86_64.rpm
     repoid: ubi-8-appstream-rpms
@@ -51,7 +51,7 @@ arches:
     size: 3457240
     checksum: sha256:16d091cc6f1a36f60a60cbb9146d52ce4ee67e50706fdc0291cb102ddda7aa8f
     name: compiler-rt
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: compiler-rt-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-13-binutils-2.40-21.el8.x86_64.rpm
     repoid: ubi-8-appstream-rpms
@@ -100,14 +100,14 @@ arches:
     size: 695520
     checksum: sha256:dac4cbc8ba2bba9215dfe0261a6ed8e6de3f91669ff11c2ce102e0144df4ed77
     name: libomp
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: libomp-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/l/libomp-devel-17.0.6-1.module+el8.10.0+20808+e12784c0.x86_64.rpm
     repoid: ubi-8-appstream-rpms
     size: 494372
     checksum: sha256:2048064923b8f1a469ca7a10bb5fe74cb39aadaa582dc6a25ab387f8cf559f27
     name: libomp-devel
-    evr: 17.0.6-1.module+el8.10.0+20808+e12784c0
+    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
     sourcerpm: libomp-17.0.6-1.module+el8.10.0+20808+e12784c0.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/l/libuv-1.41.1-2.el8_10.x86_64.rpm
     repoid: ubi-8-appstream-rpms
@@ -121,7 +121,7 @@ arches:
     size: 30357320
     checksum: sha256:a208147af11dd246d26e92de3247cf0ffed2b46d41ad2947db6a9a91aa760dcd
     name: llvm-libs
-    evr: 17.0.6-3.module+el8.10.0+22125+1509a634
+    evr: 18.1.8-3.module+el8.10.0+22393+9aa055f1
     sourcerpm: llvm-17.0.6-3.module+el8.10.0+22125+1509a634.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/v/vim-filesystem-8.0.1763-19.el8_6.4.noarch.rpm
     repoid: ubi-8-appstream-rpms
