@@ -464,14 +464,14 @@ arches:
     size: 90764
     checksum: sha256:375be8cc8806c1dd1a827692e2921fa5372c4decd0258a031174f63ead9d3cf2
     name: glibc-devel
-    evr: 2.28-251.el8_10.13
+    evr: 2.28-251.el8_10.14
     sourcerpm: glibc-2.28-251.el8_10.13.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-headers-2.28-251.el8_10.13.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
     size: 505484
     checksum: sha256:2b71ed84bce024a60dd76e86bb277adf13aa6702e53d43a244f774488f90f573
     name: glibc-headers
-    evr: 2.28-251.el8_10.13
+    evr: 2.28-251.el8_10.14
     sourcerpm: glibc-2.28-251.el8_10.13.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/groff-base-1.22.3-18.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
