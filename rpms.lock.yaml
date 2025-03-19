@@ -499,7 +499,7 @@ arches:
     size: 12403484
     checksum: sha256:9bba6db3d86b3c50afe29ac3b2afbc934f108f8bca5cfb0b2e748585359c7fba
     name: kernel-headers
-    evr: 4.18.0-553.44.1.el8_10
+    evr: 4.18.0-553.45.1.el8_10
     sourcerpm: kernel-4.18.0-553.44.1.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/k/kmod-libs-25-20.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
