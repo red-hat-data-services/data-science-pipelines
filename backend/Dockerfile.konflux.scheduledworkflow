@@ -16,7 +16,7 @@
 ARG SOURCE_CODE=.
 
 # Use ubi8/go-toolset as base image
-FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:975b964be83b125a0527a65ac95719bac35f16b80f7be11d40ae40e83fddbc4e as builder
+FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:de52410808043f76d7fafff29603cb2f6b6746327365a7ad49ad813d18326aa9 as builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
