@@ -65,21 +65,21 @@ arches:
     size: 10932444
     checksum: sha256:1c973f32f2f6591cac9d1dfb5dd901bc5760ca1913fd3d1cf4520fb8045faa27
     name: cpp
-    evr: 8.5.0-24.el8_10
+    evr: 8.5.0-26.el8_10
     sourcerpm: gcc-8.5.0-24.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-8.5.0-24.el8_10.x86_64.rpm
     repoid: ubi-8-appstream-rpms
     size: 24580244
     checksum: sha256:ae57ba43a73a6f99572f87753204b61e05c515cf89e49a7cde6b259653e2cd3f
     name: gcc
-    evr: 8.5.0-24.el8_10
+    evr: 8.5.0-26.el8_10
     sourcerpm: gcc-8.5.0-24.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-c++-8.5.0-24.el8_10.x86_64.rpm
     repoid: ubi-8-appstream-rpms
     size: 12857728
     checksum: sha256:3e4b892fc2ec1d29bd873c59d769c9c6f170d9bae79198ccb5e325be1babf1d2
     name: gcc-c++
-    evr: 8.5.0-24.el8_10
+    evr: 8.5.0-26.el8_10
     sourcerpm: gcc-8.5.0-24.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-13-binutils-2.40-21.el8.x86_64.rpm
     repoid: ubi-8-appstream-rpms
@@ -177,7 +177,7 @@ arches:
     size: 2151980
     checksum: sha256:42e0eb614e2133219be54a07cb239831ecccf267b77cbda70986914fe58cfdb6
     name: libstdc++-devel
-    evr: 8.5.0-24.el8_10
+    evr: 8.5.0-26.el8_10
     sourcerpm: gcc-8.5.0-24.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/l/libuv-1.41.1-2.el8_10.x86_64.rpm
     repoid: ubi-8-appstream-rpms
@@ -464,42 +464,42 @@ arches:
     size: 2305316
     checksum: sha256:b17b6f6257533b490124ae9aec404b405b4806c94f97f1f95026ae3958549b05
     name: glibc
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-common-2.28-251.el8_10.14.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 1051924
     checksum: sha256:e25cf27230dd4674e2340f55f26372f60692d9aca0709154399f3a4bff6921e5
     name: glibc-common
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-devel-2.28-251.el8_10.14.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 90904
     checksum: sha256:40f5288fb50e73e98e5582e07325c763bc3961c537bcbf2e4528d52a9645a349
     name: glibc-devel
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-headers-2.28-251.el8_10.14.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 505684
     checksum: sha256:50ce88354475a06c2d89ba8153c4987afcf2bba92f6a2cc407260fa898cf1182
     name: glibc-headers
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-langpack-en-2.28-251.el8_10.14.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 852224
     checksum: sha256:0ed8652e6d55a3e5d4c1750a9646b02cbd343e524fe9cae4f82b50300d5cbb46
     name: glibc-langpack-en
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/glibc-minimal-langpack-2.28-251.el8_10.14.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 72452
     checksum: sha256:2e68fd7751cd5e1b9738433cded9f95583fb938620bfe9702ee1d528bb7fb535
     name: glibc-minimal-langpack
-    evr: 2.28-251.el8_10.14
+    evr: 2.28-251.el8_10.16
     sourcerpm: glibc-2.28-251.el8_10.14.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/g/groff-base-1.22.3-18.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
@@ -527,7 +527,7 @@ arches:
     size: 12403484
     checksum: sha256:9bba6db3d86b3c50afe29ac3b2afbc934f108f8bca5cfb0b2e748585359c7fba
     name: kernel-headers
-    evr: 4.18.0-553.44.1.el8_10
+    evr: 4.18.0-553.50.1.el8_10
     sourcerpm: kernel-4.18.0-553.44.1.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/k/kmod-libs-25-20.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
@@ -562,7 +562,7 @@ arches:
     size: 213412
     checksum: sha256:0c9c36c8bd4694dd0bc0dd329e9f081f69d8a4616f397503b8e71c239810409a
     name: libgomp
-    evr: 8.5.0-24.el8_10
+    evr: 8.5.0-26.el8_10
     sourcerpm: gcc-8.5.0-24.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/l/libmetalink-0.1.3-7.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
