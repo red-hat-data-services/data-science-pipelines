@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:a1a37882bbcf1c0f1115d478d5ea9f74b496b8c753d5e4e431a70786e2dbcbfc AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22@sha256:e4193e71ea9f2e2504f6b4ee93cadef0fe5d7b37bba57484f4d4229801a7c063 AS builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
@@ -28,10 +28,10 @@ COPY ${SOURCE_CODE}/go.sum ./
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-RUN GO111MODULE=on go build -o /bin/apiserver ./backend/src/apiserver/ && \
+RUN GO111MODULE=on CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -o /bin/apiserver ./backend/src/apiserver/ && \
     dnf clean all
 
-FROM registry.redhat.io/ubi8/ubi-minimal@sha256:33161cf5ec11ea13bfe60cad64f56a3aa4d893852e8ec44b2fd2a6b40cc38539
+FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:ac61c96b93894b9169221e87718733354dd3765dd4a62b275893c7ff0d876869
 
 WORKDIR /bin
 
