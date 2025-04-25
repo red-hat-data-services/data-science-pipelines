@@ -356,7 +356,7 @@ arches:
         name: libmetalink
         evr: 0.1.3-7.el8
     module_metadata:
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/8ff1251675289fa5f52b111160d508c4c7ac51346f541ef60e99c9430a2f1b44-modules.yaml.gz
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/474e327dd846d3ac01daad5dfd08bfd27df9a56f85d26692414df8068abc7538-modules.yaml.gz
         repoid: ubi-8-for-x86_64-appstream-rpms
         size: 59708
-        checksum: sha256:8ff1251675289fa5f52b111160d508c4c7ac51346f541ef60e99c9430a2f1b44
+        checksum: sha256:474e327dd846d3ac01daad5dfd08bfd27df9a56f85d26692414df8068abc7538
