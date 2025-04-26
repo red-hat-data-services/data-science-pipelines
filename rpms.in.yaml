@@ -2,10 +2,10 @@ contentOrigin:
   repofiles:
     - ubi.repo
 packages:
-  - cmake
-  - clang
-  - openssl
   - ca-certificates
+  - clang
+  - cmake
+  - openssl
   - wget
-context:
-  containerfile: ./backend/Dockerfile.konflux.api 
+  - openssl-libs
+  - llvm
