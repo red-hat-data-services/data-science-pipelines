@@ -230,55 +230,55 @@ arches:
         sourcerpm: libmetalink-0.1.3-7.el8.src.rpm
     source:
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/c/clang-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 25543057
         checksum: sha256:6ac35cdec541fed15313671f0efe15177c8adc41324f2fb68b21064249d17fd4
         name: clang
         evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/c/cmake-3.26.5-2.el8.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 10702209
         checksum: sha256:1f9724337fffb716f890cd5b92d7694c11a98264c8812c02df8224543a819431
         name: cmake
         evr: 3.26.5-2.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/c/compiler-rt-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 2495515
         checksum: sha256:c88e0f7d67d8f22c4c4011dbadfaae343efe27738285aa85837db21afee8fb28
         name: compiler-rt
         evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-13-13.0-2.el8.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 14077
         checksum: sha256:0ba9089eacae7ed2797bee95d62a847de76289958b302bd2f2ee45f25003dff8
         name: gcc-toolset-13
         evr: 13.0-2.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-13-binutils-2.40-21.el8.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 25441816
         checksum: sha256:6d4f6ee38973956098e893efa0bb09a0615938507ac502ace05d3f428371c629
         name: gcc-toolset-13-binutils
         evr: 2.40-21.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-13-gcc-13.3.1-2.2.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 89347231
         checksum: sha256:0ca3c5e7fba19ba073619994bad0991ecae5443d4a61e8f87b8cae88f39d1f6f
         name: gcc-toolset-13-gcc
         evr: 13.3.1-2.2.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/l/libomp-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 1341475
         checksum: sha256:c638152e9918b8a9ac1b0ef679955673e02d1d24e3b729d15bcedbb47695c373
         name: libomp
         evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/l/libuv-1.41.1-2.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 1297972
         checksum: sha256:3a0fd230d7b81712aeec5bf8adf83915f0edf88e03087fde13557bd7fdb4c0bb
         name: libuv
         evr: 1:1.41.1-2.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/l/llvm-18.1.8-3.module+el8.10.0+22393+9aa055f1.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 62461419
         checksum: sha256:5c8b01298a6b36cfc086ce53f73ff61dc67bf7508a67fb01cb366aeac36df193
         name: llvm
@@ -338,7 +338,7 @@ arches:
         name: vim
         evr: 2:8.0.1763-19.el8_6.4
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/w/wget-1.19.5-12.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-appstream-source
+        repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 4509413
         checksum: sha256:b3c6e7b600190a3ce40ed32e0e07be91c7bc4b0f2aa32b04f341fc7dbd0588ed
         name: wget
