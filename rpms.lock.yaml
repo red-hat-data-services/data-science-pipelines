@@ -1052,14 +1052,14 @@ arches:
     size: 3825284
     checksum: sha256:7a7aa176c5540f5c8b10007549c1d93df41baf67ff9f644d554e9750e7fdd6c4
     name: systemd
-    evr: 239-82.el8_10.4
+    evr: 239-82.el8_10.5
     sourcerpm: systemd-239-82.el8_10.4.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/s/systemd-pam-239-82.el8_10.4.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 525904
     checksum: sha256:9628bfb08e4539eb5edcbdefb694fc5978b9bbbdb81c074a58fbddfa8436294f
     name: systemd-pam
-    evr: 239-82.el8_10.4
+    evr: 239-82.el8_10.5
     sourcerpm: systemd-239-82.el8_10.4.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/t/tcl-8.6.8-2.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
