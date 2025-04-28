@@ -284,55 +284,55 @@ arches:
         name: llvm
         evr: 18.1.8-3.module+el8.10.0+22393+9aa055f1
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/a/audit-3.1.2-1.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 1248664
         checksum: sha256:c1facd2ecc520c758bbe2b049207629ad08914798f63c92beef4790086ad2f29
         name: audit
         evr: 3.1.2-1.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/c/checkpolicy-2.9-1.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 114188
         checksum: sha256:f6590dcd337c42e093ec60065239fb8543f7b5b1273a8b8a888eb7c052dccec8
         name: checkpolicy
         evr: 2.9-1.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/e/elfutils-0.190-2.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 9288737
         checksum: sha256:54fe49a6fd4f87d6fd594b62c465105fc3efab05a1ffcc216f053c277ab619bf
         name: elfutils
         evr: 0.190-2.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/j/jansson-2.14-1.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 449524
         checksum: sha256:a3b39b7d95da87f4c9fdca3907eff2e9fed18dd1bc7f20608f3588e8b3c1361c
         name: jansson
         evr: 2.14-1.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libselinux-2.9-10.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 355220
         checksum: sha256:2f61feb51798629d4f7b78130e68eb2516463da41d6e7b64d82d28d17355b3f1
         name: libselinux
         evr: 2.9-10.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libsemanage-2.9-11.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 267435
         checksum: sha256:0e9bc0dd2ddcf5e8e8f734b32c7a3c93165060ef5b2f5910713984cea71e349f
         name: libsemanage
         evr: 2.9-11.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/p/policycoreutils-2.9-26.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 7122315
         checksum: sha256:c3fa01ec896e6e30d1a27244a0c0dfab3ea733cfc2c519698899cf1c0dfda03f
         name: policycoreutils
         evr: 2.9-26.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/s/setools-4.3.0-5.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 417737
         checksum: sha256:ab4e72390988948d173c545803099aa670f5fea2142866fc8f468812bfaefc4d
         name: setools
         evr: 4.3.0-5.el8
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/v/vim-8.0.1763-19.el8_6.4.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 11232387
         checksum: sha256:9b1393d7b47fb12bb6761d30372c9a156e5df67f0178f4aedd61375043c63ff1
         name: vim
@@ -344,13 +344,13 @@ arches:
         name: wget
         evr: 1.19.5-12.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/e/expat-2.2.5-17.el8_10.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 8345318
         checksum: sha256:41de03fcbf3a8f7fa42e7017058ae0186e98a0e448ce01772de7af0a856a749d
         name: expat
         evr: 2.2.5-17.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libmetalink-0.1.3-7.el8.src.rpm
-        repoid: ubi-8-for-x86_64-baseos-source
+        repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 341114
         checksum: sha256:0b7d6621be7e6d0ef0c16cb2dc371d59aa593264841c43fba55826103972852d
         name: libmetalink
