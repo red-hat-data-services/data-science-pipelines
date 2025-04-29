@@ -58,7 +58,7 @@ arches:
         size: 2478654
         checksum: sha256:e5a1b9617fd01d3b88e028506fc721c1af812120c028b83c77514f48ae421cf5
         name: compiler-rt
-        evr: 18.1.8-1.el9
+        evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
         sourcerpm: compiler-rt-18.1.8-1.el9.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/g/gcc-toolset-13-binutils-2.40-21.el9.x86_64.rpm
         repoid: ubi-9-for-x86_64-appstream-rpms
@@ -107,14 +107,14 @@ arches:
         size: 687666
         checksum: sha256:a2973cda446e20e6b9cefed695d0a3173a248d8294863a97119f9591bec5f67b
         name: libomp
-        evr: 18.1.8-1.el9
+        evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
         sourcerpm: libomp-18.1.8-1.el9.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libomp-devel-18.1.8-1.el9.x86_64.rpm
         repoid: ubi-9-for-x86_64-appstream-rpms
         size: 497254
         checksum: sha256:8a6566f0acab7da71459ddab00551120c6e755ceb8b841f8e30a5efb8282f07a
         name: libomp-devel
-        evr: 18.1.8-1.el9
+        evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
         sourcerpm: libomp-18.1.8-1.el9.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/l/libuv-1.42.0-2.el9_4.x86_64.rpm
         repoid: ubi-9-for-x86_64-appstream-rpms
