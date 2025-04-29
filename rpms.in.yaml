@@ -1,11 +1,11 @@
+arches:
+- x86_64
 contentOrigin:
   repofiles:
     - ubi.repo
 packages:
-  - ca-certificates
-  - clang
   - cmake
+  - clang
   - openssl
+  - ca-certificates
   - wget
-  - openssl-libs
-  - llvm
