@@ -1,3 +1,5 @@
+arches:
+- x86_64
 contentOrigin:
   repofiles:
     - ubi.repo
@@ -7,5 +9,3 @@ packages:
   - openssl
   - ca-certificates
   - wget
-context:
-  containerfile: ./backend/Dockerfile.konflux.api 
