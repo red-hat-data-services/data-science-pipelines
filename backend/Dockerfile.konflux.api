@@ -19,8 +19,8 @@ ARG SOURCE_CODE
 
 USER root
 
-RUN dnf update -y && \
-    dnf install -y cmake clang openssl
+# note - do not run 'dnf update' for konflux hermetic builds
+RUN dnf install -y cmake clang openssl
 
 
 COPY ${SOURCE_CODE}/go.mod ./
