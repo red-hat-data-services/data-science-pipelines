@@ -324,7 +324,7 @@ arches:
     size: 354036
     checksum: sha256:a8808c053ffb7ccf826d80fdd458b6521f2cc63e55eb90d79a504fbb66c36cb0
     name: checkpolicy
-    evr: 2.9-1.el8
+    evr: 3.6-1.el9
     sourcerpm: checkpolicy-2.9-1.el8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/c/cracklib-2.9.6-15.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
@@ -611,7 +611,7 @@ arches:
     size: 248956
     checksum: sha256:e7e832f301b1f7e0e15ef90113ac878935d2a10b6322b378bcf74eb125efb4a7
     name: libselinux-utils
-    evr: 2.9-10.el8_10
+    evr: 3.6-1.el9
     sourcerpm: libselinux-2.9-10.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/l/libsemanage-2.9-11.el8_10.x86_64.rpm
     repoid: ubi-8-baseos-rpms
@@ -968,14 +968,14 @@ arches:
     size: 385980
     checksum: sha256:9cea1d9d40ae47e719f74297b2f2f03a2a270bf18463db5690c089d1e7c72e2b
     name: policycoreutils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/policycoreutils-python-utils-2.9-26.el8_10.noarch.rpm
     repoid: ubi-8-baseos-rpms
     size: 260136
     checksum: sha256:e3df32bac578e129afabf19d6e4317baeabd33aa2d682cf4bd14ca8f7d21cd9b
     name: policycoreutils-python-utils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/procps-ng-3.3.15-14.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
@@ -1003,14 +1003,14 @@ arches:
     size: 290460
     checksum: sha256:1c86411dae60e3d06aebcc15d4cdbd34e5e0d459c9c8bd15a9d3460fb3657a3b
     name: python3-libselinux
-    evr: 2.9-10.el8_10
+    evr: 3.6-1.el9
     sourcerpm: libselinux-2.9-10.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-libsemanage-2.9-11.el8_10.x86_64.rpm
     repoid: ubi-8-baseos-rpms
     size: 131668
     checksum: sha256:e6a13538cb8a48bdcd69545a4ff1255bc82718c157e5b76be909ef2d55ae0381
     name: python3-libsemanage
-    evr: 2.9-11.el8_10
+    evr: 3.6-2.1.el9_5
     sourcerpm: libsemanage-2.9-11.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-pip-wheel-9.0.3-24.el8.noarch.rpm
     repoid: ubi-8-baseos-rpms
@@ -1024,7 +1024,7 @@ arches:
     size: 2361536
     checksum: sha256:74830604bec576ec360884a34ffafd4ca9d950f41177e1ae78a9c1445dbc9069
     name: python3-policycoreutils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-setools-4.3.0-5.el8.x86_64.rpm
     repoid: ubi-8-baseos-rpms
