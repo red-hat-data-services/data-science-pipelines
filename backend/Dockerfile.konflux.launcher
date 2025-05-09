@@ -30,14 +30,16 @@ COPY ${SOURCE_CODE}/go.sum ./
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-RUN GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOEXPERIMENT=strictfipsruntime go build -tags 'netgo strictfipsruntime'  -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
+RUN GO111MODULE=on CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOEXPERIMENT=strictfipsruntime go build -tags 'netgo strictfipsruntime' -o /bin/launcher-v2-fips ./backend/src/v2/cmd/launcher-v2/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:e1c4703364c5cb58f5462575dc90345bcd934ddc45e6c32f9c162f2b5617681c
 
 WORKDIR /bin
 
 COPY --from=builder /bin/launcher-v2 /bin/launcher-v2
-RUN chmod +x /bin/launcher-v2
+COPY --from=builder /bin/launcher-v2-fips /bin/launcher-v2-fips
+RUN chmod +x /bin/launcher-v2 && chmod +x /bin/launcher-v2-fips
 
 ENTRYPOINT ["/bin/launcher-v2"]
 
