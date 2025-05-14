@@ -9,21 +9,21 @@ arches:
     size: 89248
     checksum: sha256:e3d4d733730b0bf0925adf8fbf159c1ef9384aa98a49c47ad7c3adb1fd113145
     name: clang
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: clang-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/clang-libs-18.1.8-1.module+el8.10.0+22061+3612b2ba.x86_64.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
     size: 28682524
     checksum: sha256:12840ff563009144c538eb36eb7955fab0570689b886ad7f17bcbad45d8ecb27
     name: clang-libs
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: clang-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/clang-resource-filesystem-18.1.8-1.module+el8.10.0+22061+3612b2ba.noarch.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
     size: 16596
     checksum: sha256:b1efe65fa87ba753849063e94c744aed8e4fe645b2a1652e5c6adf9601688d1c
     name: clang-resource-filesystem
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: clang-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/cmake-3.26.5-2.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
@@ -58,7 +58,7 @@ arches:
     size: 3566768
     checksum: sha256:8450cbd67cab1b58043b22f7cadcba6efba973fe99cc960571531f41a3523c19
     name: compiler-rt
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: compiler-rt-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/c/cpp-8.5.0-26.el8_10.x86_64.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
@@ -163,14 +163,14 @@ arches:
     size: 750212
     checksum: sha256:3630915f83bbd5a91ad143815c32c3a12e2b8960393c661054b6efff858e4df9
     name: libomp
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: libomp-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/l/libomp-devel-18.1.8-1.module+el8.10.0+22061+3612b2ba.x86_64.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
     size: 553248
     checksum: sha256:2dde87eb128a7339beb1cbc391e98a32929e9c756dca99e53f1adeff75e4b4e7
     name: libomp-devel
-    evr: 18.1.8-1.module+el8.10.0+22061+3612b2ba
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: libomp-18.1.8-1.module+el8.10.0+22061+3612b2ba.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/l/libstdc++-devel-8.5.0-26.el8_10.x86_64.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
@@ -198,7 +198,7 @@ arches:
     size: 31718280
     checksum: sha256:5b73f81286678c7bd1f8b6154b0a17f3dbfe8c2e5aa137ff4298a0dd644dc83e
     name: llvm-libs
-    evr: 18.1.8-3.module+el8.10.0+22393+9aa055f1
+    evr: 19.1.7-2.module+el8.10.0+23045+e1f8e80e
     sourcerpm: llvm-18.1.8-3.module+el8.10.0+22393+9aa055f1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/perl-Digest-1.17-395.el8.noarch.rpm
     repoid: ubi-8-for-x86_64-appstream-rpms
@@ -324,7 +324,7 @@ arches:
     size: 354036
     checksum: sha256:a8808c053ffb7ccf826d80fdd458b6521f2cc63e55eb90d79a504fbb66c36cb0
     name: checkpolicy
-    evr: 2.9-1.el8
+    evr: 3.6-1.el9
     sourcerpm: checkpolicy-2.9-1.el8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/c/cracklib-2.9.6-15.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
@@ -583,7 +583,7 @@ arches:
     size: 248956
     checksum: sha256:e7e832f301b1f7e0e15ef90113ac878935d2a10b6322b378bcf74eb125efb4a7
     name: libselinux-utils
-    evr: 2.9-10.el8_10
+    evr: 3.6-1.el9
     sourcerpm: libselinux-2.9-10.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/l/libsemanage-2.9-11.el8_10.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
@@ -940,14 +940,14 @@ arches:
     size: 385980
     checksum: sha256:9cea1d9d40ae47e719f74297b2f2f03a2a270bf18463db5690c089d1e7c72e2b
     name: policycoreutils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/policycoreutils-python-utils-2.9-26.el8_10.noarch.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
     size: 260136
     checksum: sha256:e3df32bac578e129afabf19d6e4317baeabd33aa2d682cf4bd14ca8f7d21cd9b
     name: policycoreutils-python-utils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/procps-ng-3.3.15-14.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
@@ -975,14 +975,14 @@ arches:
     size: 290460
     checksum: sha256:1c86411dae60e3d06aebcc15d4cdbd34e5e0d459c9c8bd15a9d3460fb3657a3b
     name: python3-libselinux
-    evr: 2.9-10.el8_10
+    evr: 3.6-1.el9
     sourcerpm: libselinux-2.9-10.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-libsemanage-2.9-11.el8_10.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
     size: 131668
     checksum: sha256:e6a13538cb8a48bdcd69545a4ff1255bc82718c157e5b76be909ef2d55ae0381
     name: python3-libsemanage
-    evr: 2.9-11.el8_10
+    evr: 3.6-2.1.el9_5
     sourcerpm: libsemanage-2.9-11.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-pip-wheel-9.0.3-24.el8.noarch.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
@@ -996,7 +996,7 @@ arches:
     size: 2361536
     checksum: sha256:74830604bec576ec360884a34ffafd4ca9d950f41177e1ae78a9c1445dbc9069
     name: python3-policycoreutils
-    evr: 2.9-26.el8_10
+    evr: 3.6-2.1.el9
     sourcerpm: policycoreutils-2.9-26.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-setools-4.3.0-5.el8.x86_64.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
