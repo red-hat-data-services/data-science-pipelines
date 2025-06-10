@@ -1,5 +1,5 @@
 
-FROM registry.access.redhat.com/ubi8/python-39@sha256:e4474cd34e3192662c9009802e1d5a49ca1283f5c44024ea8c3ad491ee874834
+FROM registry.access.redhat.com/ubi8/python-39@sha256:f93d6247267643f23335fe9340648d097c1ec5456c7928ea2cd1acaaf7d8dace
 WORKDIR /opt/app-root/src
 
 USER root
