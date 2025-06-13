@@ -17,6 +17,9 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
@@ -25,8 +28,6 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/apiserver/server"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"google.golang.org/grpc/codes"
-	"os"
-	"time"
 )
 
 // deprecated
@@ -37,11 +38,15 @@ type deprecatedConfig struct {
 }
 
 type configPipelines struct {
-	Name        string
+	Name string
+	// optional, Name is used for Pipeline if not provided
+	DisplayName string
 	Description string
 	File        string
 	// optional, Name is used for PipelineVersion if not provided
 	VersionName string
+	// optional, VersionName, DisplayName, or Name is used for PipelineVersion if not provided
+	VersionDisplayName string
 	// optional, Description is used for PipelineVersion if not provided
 	VersionDescription string
 }
@@ -92,6 +97,7 @@ func LoadSamples(resourceManager *resource.ResourceManager, sampleConfigPath str
 		for _, cfg := range deprecatedCfg {
 			pipelineConfig.Pipelines = append(pipelineConfig.Pipelines, configPipelines{
 				Name:        cfg.Name,
+				DisplayName: cfg.Name,
 				File:        cfg.File,
 				Description: cfg.Description,
 			})
@@ -123,12 +129,18 @@ func LoadSamples(resourceManager *resource.ResourceManager, sampleConfigPath str
 			return fmt.Errorf("failed to load sample %s. Error: %v", cfg.Name, configErr)
 		}
 
+		pipelineDisplayName := cfg.DisplayName
+		if pipelineDisplayName == "" {
+			pipelineDisplayName = cfg.Name
+		}
+
 		// Create pipeline if it does not already exist
-		p, fetchErr := resourceManager.GetPipelineByNameAndNamespace(cfg.Name, "")
+		p, fetchErr := resourceManager.GetPipelineByNameAndNamespace(cfg.Name, common.GetPodNamespace())
 		if fetchErr != nil {
 			if util.IsUserErrorCodeMatch(fetchErr, codes.NotFound) {
 				p, configErr = resourceManager.CreatePipeline(&model.Pipeline{
 					Name:        cfg.Name,
+					DisplayName: pipelineDisplayName,
 					Description: cfg.Description,
 				})
 				if configErr != nil {
@@ -158,6 +170,17 @@ func LoadSamples(resourceManager *resource.ResourceManager, sampleConfigPath str
 			pvName = cfg.VersionName
 		}
 
+		// Use Pipeline Version Display Name if provided, if not use Pipeline Version Name, and if not provided use
+		// Pipeline Display Name (which defaults to Pipeline Name).
+		var pvDisplayName string
+		if cfg.VersionDisplayName != "" {
+			pvDisplayName = cfg.VersionDisplayName
+		} else if cfg.VersionName != "" {
+			pvDisplayName = cfg.VersionName
+		} else {
+			pvDisplayName = p.DisplayName
+		}
+
 		// If the Pipeline Version exists, do nothing
 		// Otherwise upload new Pipeline Version for
 		// this pipeline.
@@ -167,6 +190,7 @@ func LoadSamples(resourceManager *resource.ResourceManager, sampleConfigPath str
 				_, configErr = resourceManager.CreatePipelineVersion(
 					&model.PipelineVersion{
 						Name:         pvName,
+						DisplayName:  pvDisplayName,
 						Description:  pvDescription,
 						PipelineId:   p.UUID,
 						PipelineSpec: string(pipelineFile),
