@@ -35,7 +35,7 @@ COPY ${SOURCE_CODE}/ ./
 
 RUN GO111MODULE=on go build -o /bin/persistence_agent backend/src/agent/persistence/*.go
 
-FROM registry.redhat.io/ubi8/ubi-minimal@sha256:ca6e0c285facfde9d986e42fae0afcf4387e0fde2bc63656fb556710d0c34782
+FROM registry.redhat.io/ubi8/ubi-minimal@sha256:9746f7ac575b4427fc9635f8f575289870a8b30dabf77ee992ae4c2f1e121cce
 
 WORKDIR /bin
 
