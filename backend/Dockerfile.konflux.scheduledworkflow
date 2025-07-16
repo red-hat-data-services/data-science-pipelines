@@ -16,7 +16,7 @@
 ARG SOURCE_CODE=.
 
 # Use ubi8/go-toolset as base image
-FROM registry.access.redhat.com/ubi9/go-toolset:1.23@sha256:2a88121395084eaa575e5758b903fffb43dbf9d9586b2878e51678f63235b587 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.23@sha256:381fb72f087a07432520fa93364f66b5981557f1dd708f3c4692d6d0a76299b3 as builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
@@ -33,8 +33,7 @@ COPY ${SOURCE_CODE}/ ./
 
 RUN GO111MODULE=on CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
 
-
-FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:f172b3082a3d1bbe789a1057f03883c1113243564f01cd3020e27548b911d3f8
+FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:6d5a6576c83816edcc0da7ed62ba69df8f6ad3cbe659adde2891bfbec4dbf187
 
 WORKDIR /bin
 
