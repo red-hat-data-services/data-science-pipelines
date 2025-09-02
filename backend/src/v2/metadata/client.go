@@ -118,10 +118,12 @@ type Client struct {
 
 // NewClient creates a Client given the MLMD server address and port.
 func NewClient(serverAddress, serverPort string, tlsEnabled bool, caCertPath string) (*Client, error) {
+	// Retry on Aborted (MySQL deadlock), Unavailable (transient connectivity),
+	// and Internal (some transient mysql_real_connect / DNS failures surfaced by MLMD).
 	opts := []grpc_retry.CallOption{
 		grpc_retry.WithMax(mlmdClientSideMaxRetries),
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitter(300*time.Millisecond, 0.20)),
-		grpc_retry.WithCodes(codes.Aborted),
+		grpc_retry.WithCodes(codes.Aborted, codes.Unavailable, codes.Internal),
 	}
 
 	creds := insecure.NewCredentials()
