@@ -44,7 +44,8 @@ RUN chmod +x /bin/launcher-v2 && chmod +x /bin/launcher-v2-fips
 ENTRYPOINT ["/bin/launcher-v2"]
 
 LABEL com.redhat.component="odh-ml-pipelines-launcher-container" \
-      name="managed-open-data-hub/odh-ml-pipelines-launcher-rhel8" \
+      name="rhoai/odh-ml-pipelines-launcher-rhel9" \
+      cpe="cpe:/a:redhat:openshift_ai:2.23::el9" \
       description="odh-ml-pipelines-launcher" \
       summary="odh-ml-pipelines-launcher" \
       maintainer="['managed-open-data-hub@redhat.com']" \
