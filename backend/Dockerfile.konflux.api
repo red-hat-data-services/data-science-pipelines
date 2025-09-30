@@ -54,7 +54,8 @@ EXPOSE 8888
 CMD /bin/apiserver --config=/config --sampleconfig=/config/sample_config.json -logtostderr=true
 
 LABEL com.redhat.component="odh-ml-pipelines-api-server-v2-container" \
-      name="managed-open-data-hub/odh-ml-pipelines-api-server-v2-rhel8" \
+      name="rhoai/odh-ml-pipelines-api-server-v2-rhel8" \
+      cpe="cpe:/a:redhat:openshift_ai:2.20::el8" \
       description="odh-ml-pipelines-api-server-v2" \
       summary="odh-ml-pipelines-api-server-v2" \
       maintainer="['managed-open-data-hub@redhat.com']" \
