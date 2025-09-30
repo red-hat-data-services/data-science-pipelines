@@ -50,13 +50,14 @@ ENV NUM_WORKERS 2
 CMD persistence_agent --logtostderr=true --namespace=${NAMESPACE} --ttlSecondsAfterWorkflowFinish=${TTL_SECONDS_AFTER_WORKFLOW_FINISH} --numWorker ${NUM_WORKERS}
 
 LABEL com.redhat.component="odh-ml-pipelines-persistenceagent-v2-container" \
-      name="managed-open-data-hub/odh-ml-pipelines-persistenceagent-v2-rhel8" \
+      name="rhoai/odh-ml-pipelines-persistenceagent-v2-rhel8" \
       description="odh-ml-pipelines-persistenceagent-v2" \
       summary="odh-ml-pipelines-persistenceagent-v2" \
       maintainer="['managed-open-data-hub@redhat.com']" \
       io.openshift.expose-services="" \
       io.k8s.display-name="odh-ml-pipelines-persistenceagent-v2" \
       io.k8s.description="odh-ml-pipelines-persistenceagent-v2" \
-      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf" \
+      cpe="cpe:/a:redhat:openshift_ai:2.19::el8"
 
 
