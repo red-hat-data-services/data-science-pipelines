@@ -723,7 +723,7 @@ arches:
     size: 766164
     checksum: sha256:d7f579aabd177461ce0c3ffe08fa2881f2f6f623ac2379c06f68fd69e5a2a2e4
     name: pam
-    evr: 1.3.1-37.el8_10
+    evr: 1.5.1-26.el9_6
     sourcerpm: pam-1.3.1-37.el8_10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/perl-Carp-1.42-396.el8.noarch.rpm
     repoid: ubi-8-for-x86_64-baseos-rpms
