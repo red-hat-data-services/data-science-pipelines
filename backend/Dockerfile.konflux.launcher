@@ -15,8 +15,8 @@
 # Build arguments
 ARG SOURCE_CODE=.
 
-# Use ubi8/nodejs-14 as base image
-FROM registry.redhat.io/ubi8/go-toolset:1.22@sha256:a1a37882bbcf1c0f1115d478d5ea9f74b496b8c753d5e4e431a70786e2dbcbfc as builder
+# Use ubi8/go-toolset as base image
+FROM registry.redhat.io/ubi8/go-toolset:1.24@sha256:c7c95c4e0a1b1b0ff30d6da0eb3ae9502b2d68fdcc45a446d108066a470f4ba6 as builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
