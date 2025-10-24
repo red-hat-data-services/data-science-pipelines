@@ -122,7 +122,7 @@ func (s *PipelineApiTest) TestPipelineAPI() {
 	time.Sleep(1 * time.Second)
 	sequentialPipeline, err := s.pipelineClient.Create(&params.PipelineServiceCreatePipelineV1Params{
 		Body: &model.APIPipeline{Name: "sequential", URL: &model.APIURL{
-			PipelineURL: "https://storage.googleapis.com/ml-pipeline-dataset/sequential.yaml",
+			PipelineURL: "https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/refs/heads/rhoai-2.16/backend/test/v2/resources/sequential.yaml",
 		}},
 	})
 	require.Nil(t, err)
@@ -139,7 +139,7 @@ func (s *PipelineApiTest) TestPipelineAPI() {
 	time.Sleep(1 * time.Second)
 	argumentUrlPipeline, err := s.pipelineClient.Create(&params.PipelineServiceCreatePipelineV1Params{
 		Body: &model.APIPipeline{URL: &model.APIURL{
-			PipelineURL: "https://storage.googleapis.com/ml-pipeline-dataset/arguments.pipeline.zip",
+			PipelineURL: "https://github.com/red-hat-data-services/data-science-pipelines/raw/refs/heads/rhoai-2.16/backend/test/resources/arguments.pipeline.zip",
 		}},
 	})
 	require.Nil(t, err)
