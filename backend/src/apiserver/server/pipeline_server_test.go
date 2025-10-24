@@ -90,7 +90,7 @@ func TestCreatePipelineV1_LargeFile(t *testing.T) {
 	pipelineServer := PipelineServer{resourceManager: resourceManager, httpClient: httpServer.Client(), options: &PipelineServerOptions{CollectMetrics: false}}
 	pipeline, err := pipelineServer.CreatePipelineV1(context.Background(), &api.CreatePipelineRequest{
 		Pipeline: &api.Pipeline{
-			Url:         &api.Url{PipelineUrl: "https://raw.githubusercontent.com/kubeflow/pipelines/master/sdk/python/test_data/pipelines/xgboost_sample_pipeline.yaml"},
+			Url:         &api.Url{PipelineUrl: "https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/refs/heads/rhoai-2.16/sdk/python/test_data/pipelines/xgboost_sample_pipeline.yaml"},
 			Name:        "xgboost-url",
 			Description: "pipeline description",
 		},
@@ -771,7 +771,7 @@ func TestPipelineServer_CreatePipelineAndVersion_v2(t *testing.T) {
 				},
 				PipelineVersion: &apiv2.PipelineVersion{
 					PackageUrl: &apiv2.Url{
-						PipelineUrl: "https://raw.githubusercontent.com/kubeflow/pipelines/master/sdk/python/test_data/pipelines/xgboost_sample_pipeline.yaml",
+						PipelineUrl: "https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/refs/heads/rhoai-2.16/sdk/python/test_data/pipelines/xgboost_sample_pipeline.yaml",
 					},
 				},
 			},
