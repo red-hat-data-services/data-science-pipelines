@@ -278,7 +278,7 @@ func (s *UpgradeTests) PreparePipelines() {
 		Body: &pipeline_model.V2beta1PipelineVersion{
 			DisplayName: "sequential",
 			PackageURL: &pipeline_model.V2beta1URL{
-				PipelineURL: "https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/refs/heads/rhoai-2.21/backend/test/v2/resources/sequential-v2.yaml",
+				PipelineURL: "https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/refs/heads/rhoai-2.21/backend/test/v2/resources/sequential.yaml",
 			},
 			PipelineID: sequentialPipeline.PipelineID,
 		},
