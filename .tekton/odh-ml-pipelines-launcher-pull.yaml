@@ -7,14 +7,14 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "stable"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-ml-pipelines-scheduledworkflow-v2
+    appstudio.openshift.io/component: odh-ml-pipelines-launcher
     pipelines.appstudio.openshift.io/type: build
-  name: odh-ml-pipelines-scheduledworkflow-v2-on-push
+  name: odh-ml-pipelines-launcher-on-pull-request
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -23,15 +23,17 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/ds-pipelines-scheduledworkflow:{{revision}}
+    value: quay.io/opendatahub/ds-pipelines-launcher:{{revision}}
   - name: dockerfile
-    value: backend/Dockerfile.scheduledworkflow
+    value: backend/Dockerfile.launcher
   - name: path-context
     value: .
   - name: additional-tags
     value:
     - '{{target_branch}}-{{revision}}'
     - 'odh-stable'
+  - name: pipeline-type
+    value: pull-request
   pipelineRef:
     resolver: git
     params:
@@ -42,7 +44,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-ml-pipelines-scheduledworkflow-v2
+    serviceAccountName: build-pipeline-odh-ml-pipelines-launcher
   workspaces:
   - name: git-auth
     secret:
