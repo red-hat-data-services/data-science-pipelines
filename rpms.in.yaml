@@ -8,7 +8,6 @@ contentOrigin:
 packages:
   - cmake
   - clang
-  - llvm
   - openssl
   - ca-certificates
   - wget
