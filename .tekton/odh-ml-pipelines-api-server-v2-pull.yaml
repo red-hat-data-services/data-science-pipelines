@@ -31,7 +31,7 @@ spec:
     value: .
   - name: additional-tags
     value:
-    - 'odh-stable'
+    - 'odh-pr-{{revision}}'
   - name: pipeline-type
     value: pull-request
   pipelineRef:
