@@ -23,15 +23,11 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/ds-pipelines-driver:{{revision}}
+    value: quay.io/opendatahub/ds-pipelines-driver:odh-stable
   - name: dockerfile
     value: backend/Dockerfile.driver
   - name: path-context
     value: .
-  - name: additional-tags
-    value:
-    - '{{target_branch}}-{{revision}}'
-    - 'odh-stable' 
   pipelineRef:
     resolver: git
     params:
