@@ -12,7 +12,7 @@ metadata:
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-ml-pipelines-driver
+    appstudio.openshift.io/component: odh-ml-pipelines-driver-ci
     pipelines.appstudio.openshift.io/type: build
   name: odh-ml-pipelines-driver-on-push
   namespace: open-data-hub-tenant
