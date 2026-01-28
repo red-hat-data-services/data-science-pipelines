@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
 	"github.com/jinzhu/gorm"
@@ -97,7 +98,7 @@ func initDBClient(params WhSvrDBParameters, initConnectionTimeout time.Duration)
 	var tableNames []string
 	db.Raw(`show tables`).Pluck("Tables_in_caches", &tableNames)
 	for _, tableName := range tableNames {
-		log.Printf(tableName)
+		log.Print(tableName)
 	}
 
 	return storage.NewDB(db)
