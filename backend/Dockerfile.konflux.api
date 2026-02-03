@@ -23,9 +23,8 @@ ARG SOURCE_CODE
 
 USER root
 
-# note - do not run 'dnf update' for konflux hermetic builds
-# openssl is already in base image (go-toolset:1.25 has openssl-1.1.1k-14.el8_6)
-RUN dnf install -y cmake clang
+RUN dnf update -y && \
+    dnf install -y cmake clang openssl
 
 
 COPY ${SOURCE_CODE}/go.mod ./
