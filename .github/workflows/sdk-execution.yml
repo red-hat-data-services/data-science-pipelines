@@ -20,7 +20,7 @@ on:
 
 jobs:
   sdk-execution-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         k8s_version: [ "v1.29.2", "v1.31.0" ]
