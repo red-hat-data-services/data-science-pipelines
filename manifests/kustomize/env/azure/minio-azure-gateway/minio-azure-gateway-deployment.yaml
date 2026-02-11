@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: minio
-          image: gcr.io/ml-pipeline/minio:RELEASE.2019-08-14T20-37-41Z-license-compliance
+          image: quay.io/opendatahub/minio:RELEASE.2019-08-14T20-37-41Z-license-compliance
           args:
             - gateway
             - azure
