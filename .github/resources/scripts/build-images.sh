@@ -25,40 +25,21 @@ EXIT_CODE=0
 
 docker system prune -a -f
 
-docker build --progress=plain -t "${REGISTRY}/apiserver:${TAG}" -f backend/Dockerfile . && kind load docker-image "${REGISTRY}/apiserver:${TAG}" --name "kfp" || EXIT_CODE=$?
-if [[ $EXIT_CODE -ne 0 ]]
-then
-  echo "Failed to build apiserver image."
-  exit $EXIT_CODE
-fi
+APPS=("apiserver" "persistenceagent" "scheduledworkflow" "driver" "launcher")
+DOCKERFILES=("backend/Dockerfile" "backend/Dockerfile.persistenceagent" "backend/Dockerfile.scheduledworkflow" "backend/Dockerfile.driver" "backend/Dockerfile.launcher")
 
-docker build --progress=plain -t "${REGISTRY}/persistenceagent:${TAG}" -f backend/Dockerfile.persistenceagent . && kind load docker-image "${REGISTRY}/persistenceagent:${TAG}" --name "kfp" || EXIT_CODE=$?
-if [[ $EXIT_CODE -ne 0 ]]
-then
-  echo "Failed to build persistenceagent image."
-  exit $EXIT_CODE
-fi
-
-docker build --progress=plain -t "${REGISTRY}/scheduledworkflow:${TAG}" -f backend/Dockerfile.scheduledworkflow . && kind load docker-image "${REGISTRY}/scheduledworkflow:${TAG}" --name "kfp" || EXIT_CODE=$?
-if [[ $EXIT_CODE -ne 0 ]]
-then
-  echo "Failed to build scheduledworkflow image."
-  exit $EXIT_CODE
-fi
-
-docker build --progress=plain -t "${REGISTRY}/driver:${TAG}" -f backend/Dockerfile.driver . && kind load docker-image "${REGISTRY}/driver:${TAG}" --name "kfp" || EXIT_CODE=$?
-if [[ $EXIT_CODE -ne 0 ]]
-then
-  echo "Failed to build driver image."
-  exit $EXIT_CODE
-fi
-
-docker build --progress=plain -t "${REGISTRY}/launcher:${TAG}" -f backend/Dockerfile.launcher . && kind load docker-image "${REGISTRY}/launcher:${TAG}" --name "kfp" || EXIT_CODE=$?
-if [[ $EXIT_CODE -ne 0 ]]
-then
-  echo "Failed to build launcher image."
-  exit $EXIT_CODE
-fi
+for i in "${!APPS[@]}"; do
+  app="${APPS[$i]}"
+  dockerfile="${DOCKERFILES[$i]}"
+  echo "🔨 Building ${app}..."
+  docker build --progress=plain -t "${REGISTRY}/${app}:${TAG}" -f "${dockerfile}" . && docker push "${REGISTRY}/${app}:${TAG}" || EXIT_CODE=$?
+  if [[ $EXIT_CODE -ne 0 ]]; then
+    echo "Failed to build/push ${app} image."
+    exit $EXIT_CODE
+  fi
+  # Remove local image to free disk space
+  docker image rm "${REGISTRY}/${app}:${TAG}" || true
+done
 
 # clean up intermittent build caches to free up disk space
 docker system prune -a -f
