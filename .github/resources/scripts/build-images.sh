@@ -25,7 +25,7 @@ EXIT_CODE=0
 
 docker system prune -a -f
 
-docker build --progress=plain -t "${REGISTRY}/apiserver:${TAG}" -f backend/Dockerfile . && docker push "${REGISTRY}/apiserver:${TAG}" || EXIT_CODE=$?
+docker build --progress=plain -t "${REGISTRY}/apiserver:${TAG}" -f backend/Dockerfile . && kind load docker-images "${REGISTRY}/apiserver:${TAG}" --name "kfp" || EXIT_CODE=$?
 if [[ $EXIT_CODE -ne 0 ]]
 then
   echo "Failed to build apiserver image."
