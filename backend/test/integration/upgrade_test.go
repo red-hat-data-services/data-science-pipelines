@@ -227,7 +227,7 @@ func (s *UpgradeTests) VerifyExperiments() {
 		}
 	}
 	fmt.Printf("All experiments: %v", allExperiments)
-	assert.Equal(t, 5, len(experiments))
+	assert.Equal(t, 4, len(experiments))
 
 	// Default experiment is no longer deletable
 	assert.Equal(t, "Default", experiments[0].Name)
@@ -250,11 +250,8 @@ func (s *UpgradeTests) VerifyExperiments() {
 	assert.NotEmpty(t, experiments[3].ID)
 	assert.NotEmpty(t, experiments[3].CreatedAt)
 
-	assert.Equal(t, "hello world experiment", experiments[4].Name)
-	assert.Equal(t, "", experiments[4].Description)
-	assert.NotEmpty(t, experiments[4].ID)
-	assert.NotEmpty(t, experiments[4].CreatedAt)
-
+	// Note: "hello world experiment" is created later in VerifyCreatingRunsAndJobs,
+	// so it is not present at this point.
 }
 
 // TODO(jingzhang36): prepare pipeline versions.
@@ -272,7 +269,7 @@ func (s *UpgradeTests) PreparePipelines() {
 	time.Sleep(1 * time.Second)
 	sequentialPipeline, err := s.pipelineClient.Create(&pipelineParams.PipelineServiceCreatePipelineV1Params{
 		Body: &pipeline_model.APIPipeline{Name: "sequential", URL: &pipeline_model.APIURL{
-			PipelineURL: "https://raw.githubusercontent.com/opendatahub-io/data-science-pipelines/refs/heads/master/backend/test/v2/resources/sequential.yaml",
+			PipelineURL: "https://raw.githubusercontent.com/opendatahub-io/data-science-pipelines/refs/tags/v2.18.0/backend/test/v2/resources/sequential.yaml",
 		}},
 	})
 	require.Nil(t, err)
@@ -286,7 +283,7 @@ func (s *UpgradeTests) PreparePipelines() {
 	assert.Equal(t, "zip-arguments-parameters", argumentUploadPipeline.Name)
 
 	/* ---------- Import pipeline tarball by URL ---------- */
-	pipelineURL := "https://github.com/opendatahub-io/data-science-pipelines/raw/refs/heads/master/backend/test/v2/resources/arguments.pipeline.zip"
+	pipelineURL := "https://github.com/opendatahub-io/data-science-pipelines/raw/refs/tags/v2.18.0/backend/test/v2/resources/arguments.pipeline.zip"
 
 	if pullNumber := os.Getenv("PULL_NUMBER"); pullNumber != "" {
 		pipelineURL = fmt.Sprintf("https://raw.githubusercontent.com/red-hat-data-services/data-science-pipelines/pull/%s/head/backend/test/v2/resources/arguments.pipeline.zip", pullNumber)
