@@ -227,7 +227,7 @@ func (s *UpgradeTests) VerifyExperiments() {
 		}
 	}
 	fmt.Printf("All experiments: %v", allExperiments)
-	assert.Equal(t, 4, len(experiments))
+	assert.Equal(t, 5, len(experiments))
 
 	// Default experiment is no longer deletable
 	assert.Equal(t, "Default", experiments[0].Name)
@@ -249,6 +249,11 @@ func (s *UpgradeTests) VerifyExperiments() {
 	assert.Equal(t, "my third experiment", experiments[3].Description)
 	assert.NotEmpty(t, experiments[3].ID)
 	assert.NotEmpty(t, experiments[3].CreatedAt)
+
+	assert.Equal(t, "hello world experiment", experiments[4].Name)
+	assert.Equal(t, "", experiments[4].Description)
+	assert.NotEmpty(t, experiments[4].ID)
+	assert.NotEmpty(t, experiments[4].CreatedAt)
 
 	// Note: "hello world experiment" is created later in VerifyCreatingRunsAndJobs,
 	// so it is not present at this point.
