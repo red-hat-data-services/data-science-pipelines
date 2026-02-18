@@ -45,7 +45,7 @@ func DAG(ctx context.Context, opts Options, mlmd *metadata.Client) (execution *E
 		}
 	}()
 	b, _ := json.Marshal(opts)
-	glog.V(4).Info("DAG opts:  ", string(b))
+	glog.V(4).Info("DAG opts: ", string(b))
 	err = validateDAG(opts)
 	if err != nil {
 		return nil, err
