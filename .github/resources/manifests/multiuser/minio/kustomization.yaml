@@ -20,3 +20,4 @@ images:
 
 patches:
 - path: apiserver-env.yaml
+- path: minio-env.yaml
