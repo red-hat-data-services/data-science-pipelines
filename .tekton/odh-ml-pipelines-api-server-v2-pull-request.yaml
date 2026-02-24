@@ -35,6 +35,8 @@ spec:
     value: backend/Dockerfile.konflux.api
   - name: path-context
     value: .
+  - name: rhoai-version
+    value: "3.4.0-ea.1"
   - name: hermetic
     value: true
   - name: prefetch-input
