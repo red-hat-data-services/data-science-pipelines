@@ -36,12 +36,12 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
-      
+
       - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler jq default-jdk
@@ -50,7 +50,7 @@ jobs:
       - name: Generate API proto files
         working-directory: ./api
         run: make clean all
-  
+
       - name: Generate kfp-kubernetes proto files from source
         working-directory: ./kubernetes_platform
         run: make clean all
