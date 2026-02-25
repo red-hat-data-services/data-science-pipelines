@@ -53,34 +53,34 @@ arches:
         name: compiler-rt
         evr: 20.1.8-2.module+el8.10.0+23372+3f2ea6fa
         sourcerpm: llvm-20.1.8-2.module+el8.10.0+23372+3f2ea6fa.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-binutils-2.41-4.el8_10.x86_64.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-binutils-2.41-4.el8_10.1.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 7955476
-        checksum: sha256:9080afc0bc11d10e759a00e99ffcf10c0721e01a295e81096dfb613d3b8acbd1
+        size: 7954692
+        checksum: sha256:81368162b0089377ac36cce35bd5f1557e142c64b9e33dda4ff4a60477730340
         name: gcc-toolset-14-binutils
-        evr: 2.41-4.el8_10
-        sourcerpm: gcc-toolset-14-binutils-2.41-4.el8_10.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-gcc-14.2.1-10.el8_10.x86_64.rpm
+        evr: 2.41-4.el8_10.1
+        sourcerpm: gcc-toolset-14-binutils-2.41-4.el8_10.1.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-gcc-14.2.1-11.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 52913404
-        checksum: sha256:2be9f1133583f862e2631763e6634dd2960daf28341049d0a8ccf5c9387edeb4
+        size: 52912104
+        checksum: sha256:903d13395f50151f22a52b26e294622ef554ad0846532b51307cf2f65dddbe9b
         name: gcc-toolset-14-gcc
-        evr: 14.2.1-10.el8_10
-        sourcerpm: gcc-toolset-14-gcc-14.2.1-10.el8_10.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-gcc-c++-14.2.1-10.el8_10.x86_64.rpm
+        evr: 14.2.1-11.el8_10
+        sourcerpm: gcc-toolset-14-gcc-14.2.1-11.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-gcc-c++-14.2.1-11.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 16064372
-        checksum: sha256:b474901b2cb1299fc6c7bc825ef4d1ab776e742f34136cd5c26de33fd913faf6
+        size: 16062464
+        checksum: sha256:a1102cbefa0161d99dbdae80a47cb0a1011314528579a290ed22c8561b4fabf3
         name: gcc-toolset-14-gcc-c++
-        evr: 14.2.1-10.el8_10
-        sourcerpm: gcc-toolset-14-gcc-14.2.1-10.el8_10.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-libstdc++-devel-14.2.1-10.el8_10.x86_64.rpm
+        evr: 14.2.1-11.el8_10
+        sourcerpm: gcc-toolset-14-gcc-14.2.1-11.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-libstdc++-devel-14.2.1-11.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 3971684
-        checksum: sha256:2abae0902e2fadcc0ea0bc49382d7ed1cc8bec014ee2c4a9d54f9af25086bb22
+        size: 3970720
+        checksum: sha256:9f596dddc476f4f6622222f82066b03bb074b31ab30a2021178626b4b0bd4c94
         name: gcc-toolset-14-libstdc++-devel
-        evr: 14.2.1-10.el8_10
-        sourcerpm: gcc-toolset-14-gcc-14.2.1-10.el8_10.src.rpm
+        evr: 14.2.1-11.el8_10
+        sourcerpm: gcc-toolset-14-gcc-14.2.1-11.el8_10.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/g/gcc-toolset-14-runtime-14.0-1.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
         size: 28512
@@ -130,20 +130,20 @@ arches:
         name: mpdecimal
         evr: 2.5.1-3.el8
         sourcerpm: mpdecimal-2.5.1-3.el8.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/python3.12-3.12.12-1.el8_10.x86_64.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/python3.12-3.12.12-2.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 30956
-        checksum: sha256:e7ceeceeadc49a91aae41fadd4c1f363003d423043ec97124884023682e0231b
+        size: 31060
+        checksum: sha256:b458899e3d6e996a40eb3cf6a2a22ba94409c6e2dcfd1869906ab64693ef89fd
         name: python3.12
-        evr: 3.12.12-1.el8_10
-        sourcerpm: python3.12-3.12.12-1.el8_10.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/python3.12-libs-3.12.12-1.el8_10.x86_64.rpm
+        evr: 3.12.12-2.el8_10
+        sourcerpm: python3.12-3.12.12-2.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/python3.12-libs-3.12.12-2.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 10502688
-        checksum: sha256:e41dd02b13469b669a97fa9be509003e2df9b010af94630a025adde7e31fbddb
+        size: 10505652
+        checksum: sha256:2255595029fd10fca1f7f2964e92f2211df2c835ea168b0d17019dddf00c918c
         name: python3.12-libs
-        evr: 3.12.12-1.el8_10
-        sourcerpm: python3.12-3.12.12-1.el8_10.src.rpm
+        evr: 3.12.12-2.el8_10
+        sourcerpm: python3.12-3.12.12-2.el8_10.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/Packages/p/python3.12-pip-wheel-23.2.1-4.el8.noarch.rpm
         repoid: ubi-8-for-x86_64-appstream-rpms
         size: 1539820
@@ -186,13 +186,13 @@ arches:
         name: libatomic
         evr: 8.5.0-28.el8_10
         sourcerpm: gcc-8.5.0-28.el8_10.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/l/libselinux-utils-2.9-10.el8_10.x86_64.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/l/libselinux-utils-2.9-11.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-baseos-rpms
-        size: 248956
-        checksum: sha256:e7e832f301b1f7e0e15ef90113ac878935d2a10b6322b378bcf74eb125efb4a7
+        size: 248140
+        checksum: sha256:4069118e0a0e715365f813b3cf0c603e6a92dd989f0e8c9518e5036493d4526b
         name: libselinux-utils
-        evr: 2.9-10.el8_10
-        sourcerpm: libselinux-2.9-10.el8_10.src.rpm
+        evr: 2.9-11.el8_10
+        sourcerpm: libselinux-2.9-11.el8_10.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/policycoreutils-2.9-26.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-baseos-rpms
         size: 385980
@@ -214,13 +214,13 @@ arches:
         name: python3-audit
         evr: 3.1.2-1.el8_10.1
         sourcerpm: audit-3.1.2-1.el8_10.1.src.rpm
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-libselinux-2.9-10.el8_10.x86_64.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-libselinux-2.9-11.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-baseos-rpms
-        size: 290460
-        checksum: sha256:1c86411dae60e3d06aebcc15d4cdbd34e5e0d459c9c8bd15a9d3460fb3657a3b
+        size: 289412
+        checksum: sha256:e804b7696d9bf82b2d8e49eca667fa0ac0c3eee76f42b5d7d564ea75f24365ed
         name: python3-libselinux
-        evr: 2.9-10.el8_10
-        sourcerpm: libselinux-2.9-10.el8_10.src.rpm
+        evr: 2.9-11.el8_10
+        sourcerpm: libselinux-2.9-11.el8_10.src.rpm
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/os/Packages/p/python3-libsemanage-2.9-12.el8_10.x86_64.rpm
         repoid: ubi-8-for-x86_64-baseos-rpms
         size: 131784
@@ -276,18 +276,18 @@ arches:
         checksum: sha256:e1b85010aaa1a68d78d6c82aa183ea4e394124a2847b7ca3b66dfd0079824dbe
         name: gcc-toolset-14
         evr: 14.0-1.el8_10
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-14-binutils-2.41-4.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-14-binutils-2.41-4.el8_10.1.src.rpm
         repoid: ubi-8-for-x86_64-appstream-source-rpms
-        size: 27306519
-        checksum: sha256:e28f5951e286b0619f976743ce7d525a12cc1eba1f7150a34a0d7ae8ab1047e5
+        size: 27306724
+        checksum: sha256:502c3ed2e479878a9d6ef7d0794ef556c05e970ec56253241fdc7528f0e7e092
         name: gcc-toolset-14-binutils
-        evr: 2.41-4.el8_10
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-14-gcc-14.2.1-10.el8_10.src.rpm
+        evr: 2.41-4.el8_10.1
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/g/gcc-toolset-14-gcc-14.2.1-11.el8_10.src.rpm
         repoid: ubi-8-for-x86_64-appstream-source-rpms
-        size: 93037458
-        checksum: sha256:44c845536a74ab93930b8096b080e53837913c778cdeb702b273da75f2626f85
+        size: 93036534
+        checksum: sha256:93d79c2a4ee12a6d037741bb7a87888390a0b13a99434be2b9fc8b702ed01de0
         name: gcc-toolset-14-gcc
-        evr: 14.2.1-10.el8_10
+        evr: 14.2.1-11.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/l/libuv-1.41.1-2.el8_10.src.rpm
         repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 1297972
@@ -306,12 +306,12 @@ arches:
         checksum: sha256:36811086e6cf10de04a5cfcbc3599228e073a44e032fac74d72857c970f06cae
         name: mpdecimal
         evr: 2.5.1-3.el8
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/p/python3.12-3.12.12-1.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/p/python3.12-3.12.12-2.el8_10.src.rpm
         repoid: ubi-8-for-x86_64-appstream-source-rpms
-        size: 20869970
-        checksum: sha256:0f8e31ed00a577ddbf493a04b70ea364dd0b35fd2a30f2a0e5719b68aeb244b9
+        size: 20872264
+        checksum: sha256:351a9a7709a0e1f8c6c80c39d6c47f7e5f8b4a52a1e0eb86eaa023661fe385fa
         name: python3.12
-        evr: 3.12.12-1.el8_10
+        evr: 3.12.12-2.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/source/SRPMS/Packages/p/python3.12-pip-23.2.1-4.el8.src.rpm
         repoid: ubi-8-for-x86_64-appstream-source-rpms
         size: 9393232
@@ -348,12 +348,12 @@ arches:
         checksum: sha256:a3b39b7d95da87f4c9fdca3907eff2e9fed18dd1bc7f20608f3588e8b3c1361c
         name: jansson
         evr: 2.14-1.el8
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libselinux-2.9-10.el8_10.src.rpm
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libselinux-2.9-11.el8_10.src.rpm
         repoid: ubi-8-for-x86_64-baseos-source-rpms
-        size: 355220
-        checksum: sha256:2f61feb51798629d4f7b78130e68eb2516463da41d6e7b64d82d28d17355b3f1
+        size: 355013
+        checksum: sha256:47297c6a5ffa7556e1a19ac8f65b593f0cbb403cc743fde89e3c9a0424b1b0fc
         name: libselinux
-        evr: 2.9-10.el8_10
+        evr: 2.9-11.el8_10
       - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/baseos/source/SRPMS/Packages/l/libsemanage-2.9-12.el8_10.src.rpm
         repoid: ubi-8-for-x86_64-baseos-source-rpms
         size: 268557
@@ -397,7 +397,7 @@ arches:
         name: libmetalink
         evr: 0.1.3-7.el8
     module_metadata:
-      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/69c12fe0c5c910f40b66b6d8c52c03e4e878aa0ac40846fcbe1b5536b805b614-modules.yaml.gz
+      - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/x86_64/appstream/os/repodata/e461fe2cba8601fa8885cf1c6a1741ec7519c2f7d461aaf2a3195202addd400e-modules.yaml.gz
         repoid: ubi-8-for-x86_64-appstream-rpms
-        size: 59425
-        checksum: sha256:69c12fe0c5c910f40b66b6d8c52c03e4e878aa0ac40846fcbe1b5536b805b614
+        size: 59384
+        checksum: sha256:e461fe2cba8601fa8885cf1c6a1741ec7519c2f7d461aaf2a3195202addd400e
