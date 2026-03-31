@@ -51,9 +51,10 @@ import (
 )
 
 const (
-	pipelineContextTypeName    = "system.Pipeline"
-	pipelineRunContextTypeName = "system.PipelineRun"
-	ImporterExecutionTypeName  = "system.ImporterExecution"
+	pipelineContextTypeName            = "system.Pipeline"
+	pipelineRunContextTypeName         = "system.PipelineRun"
+	ImporterExecutionTypeName          = "system.ImporterExecution"
+	ImporterWorkspaceExecutionTypeName = "system.ImporterWorkspaceExecution"
 	// mlmdClientSideMaxRetries is the number of times the MLMD client will retry
 	// a failed gRPC call before returning an error. This is intentionally higher
 	// than a typical RPC retry budget because MySQL deadlocks (codes.Aborted) on
@@ -64,7 +65,9 @@ const (
 	mlmdClientSideBackoffJitter = 0.25
 	// mlmdClientSideBackoffCap limits the maximum per-attempt wait so a single
 	// deadlock retry never stalls a pod for more than 30 s.
-	mlmdClientSideBackoffCap = 30 * time.Second
+	mlmdClientSideBackoffCap  = 30 * time.Second
+	defaultMaxGRPCMessageSize = 100 * 1024 * 1024 // 100MB
+	maxGRPCMessageSizeEnv     = "METADATA_GRPC_MESSAGE_SIZE"
 )
 
 type ExecutionType string
