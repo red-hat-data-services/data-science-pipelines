@@ -15,6 +15,7 @@
 package api
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"os"
@@ -71,20 +72,27 @@ var _ = BeforeSuite(func() {
 	clientConfig := testutil.GetClientConfig(*config.Namespace)
 	k8Client, err = testutil.CreateK8sClient()
 	Expect(err).To(BeNil(), "Failed to initialize K8s client")
+	var tlsCfg *tls.Config
+	if *config.TLSEnabled {
+		tlsCfg, err = testutil.GetTLSConfig(*config.CaCertPath)
+		if err != nil {
+			log.Fatalf("Error getting TLS Config: %v", err)
+		}
+	}
 
 	if *config.KubeflowMode {
 		logger.Log("Creating API Clients for Kubeflow Mode")
 		newPipelineClient = func() (*apiserver.PipelineClient, error) {
-			return apiserver.NewKubeflowInClusterPipelineClient(*config.Namespace, *config.DebugMode)
+			return apiserver.NewKubeflowInClusterPipelineClient(*config.Namespace, *config.DebugMode, tlsCfg)
 		}
 		newExperimentClient = func() (*apiserver.ExperimentClient, error) {
-			return apiserver.NewKubeflowInClusterExperimentClient(*config.Namespace, *config.DebugMode)
+			return apiserver.NewKubeflowInClusterExperimentClient(*config.Namespace, *config.DebugMode, tlsCfg)
 		}
 		newRunClient = func() (*apiserver.RunClient, error) {
-			return apiserver.NewKubeflowInClusterRunClient(*config.Namespace, *config.DebugMode)
+			return apiserver.NewKubeflowInClusterRunClient(*config.Namespace, *config.DebugMode, tlsCfg)
 		}
 		newRecurringRunClient = func() (*apiserver.RecurringRunClient, error) {
-			return apiserver.NewKubeflowInClusterRecurringRunClient(*config.Namespace, *config.DebugMode)
+			return apiserver.NewKubeflowInClusterRecurringRunClient(*config.Namespace, *config.DebugMode, tlsCfg)
 		}
 	} else if *config.MultiUserMode || *config.AuthToken != "" {
 		if *config.AuthToken != "" {
@@ -95,30 +103,30 @@ var _ = BeforeSuite(func() {
 			userToken = testutil.CreateUserToken(k8Client, *config.UserNamespace, *config.UserServiceAccountName)
 		}
 		newPipelineClient = func() (*apiserver.PipelineClient, error) {
-			return apiserver.NewMultiUserPipelineClient(clientConfig, userToken, *config.DebugMode)
+			return apiserver.NewMultiUserPipelineClient(clientConfig, userToken, *config.DebugMode, tlsCfg)
 		}
 		newExperimentClient = func() (*apiserver.ExperimentClient, error) {
-			return apiserver.NewMultiUserExperimentClient(clientConfig, userToken, *config.DebugMode)
+			return apiserver.NewMultiUserExperimentClient(clientConfig, userToken, *config.DebugMode, tlsCfg)
 		}
 		newRunClient = func() (*apiserver.RunClient, error) {
-			return apiserver.NewMultiUserRunClient(clientConfig, userToken, *config.DebugMode)
+			return apiserver.NewMultiUserRunClient(clientConfig, userToken, *config.DebugMode, tlsCfg)
 		}
 		newRecurringRunClient = func() (*apiserver.RecurringRunClient, error) {
-			return apiserver.NewMultiUserRecurringRunClient(clientConfig, userToken, *config.DebugMode)
+			return apiserver.NewMultiUserRecurringRunClient(clientConfig, userToken, *config.DebugMode, tlsCfg)
 		}
 	} else {
 		logger.Log("Creating API Clients for Single User Mode")
 		newPipelineClient = func() (*apiserver.PipelineClient, error) {
-			return apiserver.NewPipelineClient(clientConfig, *config.DebugMode)
+			return apiserver.NewPipelineClient(clientConfig, *config.DebugMode, tlsCfg)
 		}
 		newExperimentClient = func() (*apiserver.ExperimentClient, error) {
-			return apiserver.NewExperimentClient(clientConfig, *config.DebugMode)
+			return apiserver.NewExperimentClient(clientConfig, *config.DebugMode, tlsCfg)
 		}
 		newRunClient = func() (*apiserver.RunClient, error) {
-			return apiserver.NewRunClient(clientConfig, *config.DebugMode)
+			return apiserver.NewRunClient(clientConfig, *config.DebugMode, tlsCfg)
 		}
 		newRecurringRunClient = func() (*apiserver.RecurringRunClient, error) {
-			return apiserver.NewRecurringRunClient(clientConfig, *config.DebugMode)
+			return apiserver.NewRecurringRunClient(clientConfig, *config.DebugMode, tlsCfg)
 		}
 	}
 
@@ -126,8 +134,10 @@ var _ = BeforeSuite(func() {
 		*config.UploadPipelinesWithKubernetes,
 		*config.KubeflowMode,
 		*config.DebugMode,
+		userToken,
 		*config.Namespace,
 		clientConfig,
+		tlsCfg,
 	)
 
 	Expect(err).To(BeNil(), "Failed to get Pipeline Upload Client")
@@ -153,9 +163,30 @@ var _ = BeforeEach(func() {
 	testContext.Experiment.CreatedExperimentIds = make([]string, 0)
 })
 
-var _ = AfterEach(func() {
-	// Delete pipelines created during the test
+var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	logger.Log("################### Global Cleanup after each test #####################")
+
+	if testContext == nil {
+		logger.Log("Test context not initialized (pending/skipped test) - skipping cleanup")
+		return
+	}
+
+	if specReport.Failed() {
+		if len(testContext.PipelineRun.CreatedRunIds) > 0 {
+			report, _ := testutil.BuildArchivedWorkflowLogsReport(k8Client, testContext.PipelineRun.CreatedRunIds)
+			AddReportEntry(testutil.ArchivedWorkflowLogsReportTitle, report)
+		}
+
+		logger.Log("Test failed... Capturing pod logs from %v to %v", testContext.TestStartTimeUTC, time.Now().UTC())
+		podLogs := testutil.ReadContainerLogs(k8Client, *config.Namespace, "pipeline-api-server", nil, &testContext.TestStartTimeUTC, config.PodLogLimit)
+		AddReportEntry("Pod Log", podLogs)
+		AddReportEntry("Test Log", specReport.CapturedGinkgoWriterOutput)
+		currentDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred(), "Failed to get current directory")
+		testutil.WriteLogFile(specReport, GinkgoT().Name(), filepath.Join(currentDir, testLogsDirectory))
+	} else {
+		log.Printf("Test passed")
+	}
 
 	logger.Log("Deleting %d run(s)", len(testContext.PipelineRun.CreatedRunIds))
 	for _, runID := range testContext.PipelineRun.CreatedRunIds {
@@ -171,20 +202,6 @@ var _ = AfterEach(func() {
 	logger.Log("Deleting %d pipeline(s)", len(testContext.Pipeline.CreatedPipelines))
 	for _, pipeline := range testContext.Pipeline.CreatedPipelines {
 		testutil.DeletePipeline(pipelineClient, pipeline.PipelineID)
-	}
-})
-
-var _ = ReportAfterEach(func(specReport types.SpecReport) {
-	if specReport.Failed() {
-		logger.Log("Test failed... Capturing pod logs from %v to %v", testContext.TestStartTimeUTC, time.Now().UTC())
-		podLogs := testutil.ReadContainerLogs(k8Client, *config.Namespace, "pipeline-api-server", nil, &testContext.TestStartTimeUTC, config.PodLogLimit)
-		AddReportEntry("Pod Log", podLogs)
-		AddReportEntry("Test Log", specReport.CapturedGinkgoWriterOutput)
-		currentDir, err := os.Getwd()
-		Expect(err).NotTo(HaveOccurred(), "Failed to get current directory")
-		testutil.WriteLogFile(specReport, GinkgoT().Name(), filepath.Join(currentDir, testLogsDirectory))
-	} else {
-		log.Printf("Test passed")
 	}
 })
 

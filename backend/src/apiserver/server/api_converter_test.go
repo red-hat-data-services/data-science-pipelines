@@ -1558,7 +1558,7 @@ func TestToApiTask(t *testing.T) {
 		UUID:              DefaultFakeUUID,
 		Namespace:         "",
 		PipelineName:      "pipeline/my-pipeline",
-		RunId:             NonDefaultFakeUUID,
+		RunID:             NonDefaultFakeUUID,
 		MLMDExecutionID:   "1",
 		CreatedTimestamp:  1,
 		FinishedTimestamp: 2,
@@ -1584,7 +1584,7 @@ func TestToApiTasks(t *testing.T) {
 		UUID:              "123e4567-e89b-12d3-a456-426655440000",
 		Namespace:         "ns1",
 		PipelineName:      "namespace/ns1/pipeline/my-pipeline-1",
-		RunId:             "123e4567-e89b-12d3-a456-426655440001",
+		RunID:             "123e4567-e89b-12d3-a456-426655440001",
 		MLMDExecutionID:   "1",
 		CreatedTimestamp:  1,
 		FinishedTimestamp: 2,
@@ -1594,7 +1594,7 @@ func TestToApiTasks(t *testing.T) {
 		UUID:              "123e4567-e89b-12d3-a456-426655440002",
 		Namespace:         "ns2",
 		PipelineName:      "namespace/ns1/pipeline/my-pipeline-2",
-		RunId:             "123e4567-e89b-12d3-a456-426655440003",
+		RunID:             "123e4567-e89b-12d3-a456-426655440003",
 		MLMDExecutionID:   "2",
 		CreatedTimestamp:  3,
 		FinishedTimestamp: 4,
@@ -3130,7 +3130,7 @@ func Test_toModelTask(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "3",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  4,
@@ -3188,7 +3188,7 @@ func Test_toModelTask(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "",
 				PipelineName:      "",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "7",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  5,
@@ -3300,7 +3300,7 @@ func Test_toModelTasks_v2(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "",
 			PipelineName:      "",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "7",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  5,
@@ -3331,7 +3331,7 @@ func Test_toModelTasks_wf(t *testing.T) {
 		{
 			PodName:           "run1-file-passing-pipelines-node0",
 			Namespace:         "kubeflow",
-			RunId:             "run1_uid_true",
+			RunID:             "run1_uid_true",
 			CreatedTimestamp:  -62135596800,
 			StartedTimestamp:  1675734919,
 			FinishedTimestamp: 1675735118,
@@ -3342,7 +3342,7 @@ func Test_toModelTasks_wf(t *testing.T) {
 		{
 			PodName:           "run1-print-text-node1",
 			Namespace:         "kubeflow",
-			RunId:             "run1_uid_true",
+			RunID:             "run1_uid_true",
 			CreatedTimestamp:  -62135596800,
 			StartedTimestamp:  1675735015,
 			FinishedTimestamp: 1675735041,
@@ -3372,7 +3372,7 @@ func Test_toApiTaskV1(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "3",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  4,
@@ -3403,7 +3403,7 @@ func Test_toApiTaskV1(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "7",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  5,
@@ -3449,7 +3449,7 @@ func Test_toApiTasksV1(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "3",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  4,
@@ -3467,7 +3467,7 @@ func Test_toApiTasksV1(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "7",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  5,
@@ -3528,7 +3528,7 @@ func Test_toApiPipelineTaskDetail(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "3",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  4,
@@ -3555,7 +3555,7 @@ func Test_toApiPipelineTaskDetail(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "7",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  5,
@@ -3620,7 +3620,7 @@ func Test_toApiPipelineTaskDetail(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "7",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  5,
@@ -3653,7 +3653,7 @@ func Test_toApiPipelineTaskDetail(t *testing.T) {
 				UUID:              "1",
 				Namespace:         "ns1",
 				PipelineName:      "namespaces/ns1/pipelines/p1",
-				RunId:             "2",
+				RunID:             "2",
 				MLMDExecutionID:   "7",
 				CreatedTimestamp:  4,
 				StartedTimestamp:  5,
@@ -3701,7 +3701,7 @@ func Test_toApiPipelineTaskDetails(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "3",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  4,
@@ -3713,7 +3713,7 @@ func Test_toApiPipelineTaskDetails(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "7",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  5,
@@ -3790,7 +3790,7 @@ func Test_toApiPipelineTaskDetails(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "7",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  5,
@@ -3814,7 +3814,7 @@ func Test_toApiPipelineTaskDetails(t *testing.T) {
 			UUID:              "1",
 			Namespace:         "ns1",
 			PipelineName:      "namespaces/ns1/pipelines/p1",
-			RunId:             "2",
+			RunID:             "2",
 			MLMDExecutionID:   "7",
 			CreatedTimestamp:  4,
 			StartedTimestamp:  5,
@@ -3984,7 +3984,7 @@ func TestToModelRun(t *testing.T) {
 							UUID:              "task1",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run1",
+							RunID:             "run1",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4007,7 +4007,7 @@ func TestToModelRun(t *testing.T) {
 							UUID:              "task2",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run1",
+							RunID:             "run1",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4146,7 +4146,7 @@ func TestToModelRun(t *testing.T) {
 							UUID:              "task1",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run2",
+							RunID:             "run2",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4451,7 +4451,7 @@ func Test_toApiRun(t *testing.T) {
 							UUID:              "task1",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run2",
+							RunID:             "run2",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4592,7 +4592,7 @@ func Test_toApiRun(t *testing.T) {
 							UUID:              "task1",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run2",
+							RunID:             "run2",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4654,7 +4654,7 @@ func Test_toApiRun(t *testing.T) {
 							UUID:              "task1",
 							Namespace:         "",
 							PipelineName:      "",
-							RunId:             "run2",
+							RunID:             "run2",
 							MLMDExecutionID:   "14",
 							CreatedTimestamp:  11,
 							StartedTimestamp:  12,
@@ -4722,4 +4722,194 @@ func Test_toApiRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToApiRunStorageStateV1(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    model.StorageState
+		expected apiv1beta1.Run_StorageState
+	}{
+		{"empty string defaults to available", model.StorageState(""), apiv1beta1.Run_STORAGESTATE_AVAILABLE},
+		{"archived v2", model.StorageStateArchived, apiv1beta1.Run_STORAGESTATE_ARCHIVED},
+		{"archived v1", model.StorageStateArchived.ToV1(), apiv1beta1.Run_STORAGESTATE_ARCHIVED},
+		{"available v2", model.StorageStateAvailable, apiv1beta1.Run_STORAGESTATE_AVAILABLE},
+		{"available v1", model.StorageStateAvailable.ToV1(), apiv1beta1.Run_STORAGESTATE_AVAILABLE},
+		{"unknown defaults to available", model.StorageState("UNKNOWN"), apiv1beta1.Run_STORAGESTATE_AVAILABLE},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			state := testCase.state
+			result := toApiRunStorageStateV1(&state)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+func TestToApiExperimentStorageState(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    model.StorageState
+		expected apiv2beta1.Experiment_StorageState
+	}{
+		{"empty string defaults to unspecified", model.StorageState(""), apiv2beta1.Experiment_STORAGE_STATE_UNSPECIFIED},
+		{"archived v2", model.StorageStateArchived, apiv2beta1.Experiment_ARCHIVED},
+		{"archived v1", model.StorageStateArchived.ToV1(), apiv2beta1.Experiment_ARCHIVED},
+		{"available v2", model.StorageStateAvailable, apiv2beta1.Experiment_AVAILABLE},
+		{"available v1", model.StorageStateAvailable.ToV1(), apiv2beta1.Experiment_AVAILABLE},
+		{"unspecified v2", model.StorageStateUnspecified, apiv2beta1.Experiment_STORAGE_STATE_UNSPECIFIED},
+		{"unspecified v1", model.StorageStateUnspecified.ToV1(), apiv2beta1.Experiment_STORAGE_STATE_UNSPECIFIED},
+		{"unknown defaults to unspecified", model.StorageState("UNKNOWN"), apiv2beta1.Experiment_STORAGE_STATE_UNSPECIFIED},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			state := testCase.state
+			result := toApiExperimentStorageState(&state)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+func TestToApiExperimentStorageStateV1(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    model.StorageState
+		expected apiv1beta1.Experiment_StorageState
+	}{
+		{"empty string defaults to unspecified", model.StorageState(""), apiv1beta1.Experiment_STORAGESTATE_UNSPECIFIED},
+		{"archived v2", model.StorageStateArchived, apiv1beta1.Experiment_STORAGESTATE_ARCHIVED},
+		{"archived v1", model.StorageStateArchived.ToV1(), apiv1beta1.Experiment_STORAGESTATE_ARCHIVED},
+		{"available v2", model.StorageStateAvailable, apiv1beta1.Experiment_STORAGESTATE_AVAILABLE},
+		{"available v1", model.StorageStateAvailable.ToV1(), apiv1beta1.Experiment_STORAGESTATE_AVAILABLE},
+		{"unspecified v2", model.StorageStateUnspecified, apiv1beta1.Experiment_STORAGESTATE_UNSPECIFIED},
+		{"unspecified v1", model.StorageStateUnspecified.ToV1(), apiv1beta1.Experiment_STORAGESTATE_UNSPECIFIED},
+		{"unknown defaults to unspecified", model.StorageState("UNKNOWN"), apiv1beta1.Experiment_STORAGESTATE_UNSPECIFIED},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			state := testCase.state
+			result := toApiExperimentStorageStateV1(&state)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+func TestToApiPipelineVersionsV1_Empty(t *testing.T) {
+	result := toApiPipelineVersionsV1([]*model.PipelineVersion{})
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
+}
+
+func TestToApiPipelineVersionsV1_SingleVersion(t *testing.T) {
+	versions := []*model.PipelineVersion{
+		{
+			UUID:           "version-1",
+			Name:           "v1",
+			CreatedAtInSec: 100,
+			PipelineId:     "pipeline-1",
+		},
+	}
+	result := toApiPipelineVersionsV1(versions)
+	assert.NotNil(t, result)
+	assert.Equal(t, 1, len(result))
+	assert.Equal(t, "version-1", result[0].Id)
+	assert.Equal(t, "v1", result[0].Name)
+}
+
+func TestToApiPipelineVersionsV1_MultipleVersions(t *testing.T) {
+	versions := []*model.PipelineVersion{
+		{
+			UUID:           "version-1",
+			Name:           "v1",
+			CreatedAtInSec: 100,
+			PipelineId:     "pipeline-1",
+		},
+		{
+			UUID:           "version-2",
+			Name:           "v2",
+			CreatedAtInSec: 200,
+			PipelineId:     "pipeline-1",
+		},
+	}
+	result := toApiPipelineVersionsV1(versions)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, len(result))
+	assert.Equal(t, "version-1", result[0].Id)
+	assert.Equal(t, "version-2", result[1].Id)
+}
+
+func TestToApiPipelineVersions_Empty(t *testing.T) {
+	result := toApiPipelineVersions([]*model.PipelineVersion{})
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
+}
+
+func TestToApiPipelineVersions_SingleVersion(t *testing.T) {
+	versions := []*model.PipelineVersion{
+		{
+			UUID:           "version-1",
+			Name:           "v1",
+			DisplayName:    "v1",
+			CreatedAtInSec: 100,
+			PipelineId:     "pipeline-1",
+		},
+	}
+	result := toApiPipelineVersions(versions)
+	assert.NotNil(t, result)
+	assert.Equal(t, 1, len(result))
+	assert.Equal(t, "version-1", result[0].PipelineVersionId)
+	assert.Equal(t, "v1", result[0].DisplayName)
+}
+
+func TestToApiPipelineVersions_MultipleVersions(t *testing.T) {
+	versions := []*model.PipelineVersion{
+		{
+			UUID:           "version-1",
+			Name:           "v1",
+			CreatedAtInSec: 100,
+			PipelineId:     "pipeline-1",
+		},
+		{
+			UUID:           "version-2",
+			Name:           "v2",
+			CreatedAtInSec: 200,
+			PipelineId:     "pipeline-1",
+		},
+	}
+	result := toApiPipelineVersions(versions)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, len(result))
+	assert.Equal(t, "version-1", result[0].PipelineVersionId)
+	assert.Equal(t, "version-2", result[1].PipelineVersionId)
+}
+
+func TestToPipelineSpecRuntimeConfig_Nil(t *testing.T) {
+	result := toPipelineSpecRuntimeConfig(nil)
+	assert.NotNil(t, result)
+	assert.Empty(t, result.ParameterValues)
+	assert.Empty(t, result.GcsOutputDirectory)
+}
+
+func TestToPipelineSpecRuntimeConfig_WithParams(t *testing.T) {
+	serializedParameters := `{"param1":"value1","param2":"value2"}`
+	runtimeConfig := &model.RuntimeConfig{
+		Parameters:   model.LargeText(serializedParameters),
+		PipelineRoot: "gs://my-bucket/pipeline-root",
+	}
+	result := toPipelineSpecRuntimeConfig(runtimeConfig)
+	assert.NotNil(t, result)
+	assert.Equal(t, "gs://my-bucket/pipeline-root", result.GcsOutputDirectory)
+	assert.NotNil(t, result.ParameterValues)
+	assert.Equal(t, 2, len(result.ParameterValues))
+}
+
+func TestToPipelineSpecRuntimeConfig_InvalidJSON(t *testing.T) {
+	runtimeConfig := &model.RuntimeConfig{
+		Parameters:   model.LargeText("not valid json"),
+		PipelineRoot: "gs://my-bucket/pipeline-root",
+	}
+	result := toPipelineSpecRuntimeConfig(runtimeConfig)
+	// toMapProtoStructParameters returns nil on invalid JSON that also fails
+	// v1 parameter parsing, causing toPipelineSpecRuntimeConfig to return nil.
+	assert.Nil(t, result)
 }

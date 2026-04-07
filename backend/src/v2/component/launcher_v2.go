@@ -41,6 +41,7 @@ import (
 	"gocloud.dev/blob"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -48,17 +49,19 @@ type LauncherV2Options struct {
 	Namespace,
 	PodName,
 	PodUID,
+	MLPipelineServerAddress,
+	MLPipelineServerPort,
 	MLMDServerAddress,
 	MLMDServerPort,
 	PipelineName,
 	RunID string
 	PublishLogs   string
 	CacheDisabled bool
-	// set to true if ml pipeline server is serving over tls
+	// Set to true if apiserver is serving over TLS
 	MLPipelineTLSEnabled bool
-	// set to true if metadata server is serving over tls
-	MetadataTLSEnabled bool
-	CaCertPath         string
+	// Set to true if metadata server is serving over TLS
+	MLMDTLSEnabled bool
+	CaCertPath     string
 }
 
 type LauncherV2 struct {
@@ -140,7 +143,7 @@ func stopWaitingArtifacts(artifacts map[string]*pipelinespec.ArtifactList) {
 				continue
 			}
 
-			localPath, err := LocalPathForURI(inputArtifact.Uri)
+			localPath, err := retrieveArtifactPath(inputArtifact)
 			if err != nil {
 				continue
 			}
@@ -158,6 +161,14 @@ func stopWaitingArtifacts(artifacts map[string]*pipelinespec.ArtifactList) {
 			}
 		}
 	}
+}
+
+// OpenBucketConfig stores the parameters that are passed into the objectstore.OpenBucket function.
+type OpenBucketConfig struct {
+	ctx       context.Context
+	k8sClient kubernetes.Interface
+	namespace string
+	config    *objectstore.Config
 }
 
 // Execute calls executeV2, updates the cache, and publishes the results to MLMD.
@@ -216,7 +227,20 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	bucket, err := objectstore.OpenBucket(ctx, l.clientManager.K8sClient(), l.options.Namespace, bucketConfig)
+
+	openBucketConfig := &OpenBucketConfig{
+		ctx:       ctx,
+		k8sClient: l.clientManager.K8sClient(),
+		namespace: l.options.Namespace,
+		config:    bucketConfig,
+	}
+
+	bucket, err := objectstore.OpenBucket(
+		openBucketConfig.ctx,
+		openBucketConfig.k8sClient,
+		openBucketConfig.namespace,
+		openBucketConfig.config,
+	)
 	if err != nil {
 		return err
 	}
@@ -235,6 +259,8 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 		l.options.Namespace,
 		l.clientManager.K8sClient(),
 		l.options.PublishLogs,
+		l.options.CaCertPath,
+		openBucketConfig,
 	)
 	if err != nil {
 		return err
@@ -247,7 +273,7 @@ func (l *LauncherV2) Execute(ctx context.Context) (err error) {
 			return fmt.Errorf("failed to get id from createdExecution")
 		}
 		task := &api.Task{
-			//TODO how to differentiate between shared pipeline and namespaced pipeline
+			// TODO how to differentiate between shared pipeline and namespaced pipeline
 			PipelineName:    "pipeline/" + l.options.PipelineName,
 			Namespace:       l.options.Namespace,
 			RunId:           l.options.RunID,
@@ -357,6 +383,8 @@ func executeV2(
 	namespace string,
 	k8sClient kubernetes.Interface,
 	publishLogs string,
+	customCAPath string,
+	openBucketConfig *OpenBucketConfig,
 ) (*pipelinespec.ExecutorOutput, []*metadata.OutputArtifact, error) {
 
 	// Add parameter default values to executorInput, if there is not already a user input.
@@ -383,9 +411,22 @@ func executeV2(
 		namespace,
 		k8sClient,
 		publishLogs,
+		customCAPath,
 	)
 	if err != nil {
-		return nil, nil, err
+		glog.Errorf("Component failed to execute successfully: %v", err)
+
+		outputArtifacts, uploadErr := uploadOutputArtifacts(ctx, executorInput, executorOutput, uploadOutputArtifactsOptions{
+			bucketConfig:   bucketConfig,
+			bucket:         bucket,
+			metadataClient: metadataClient,
+		}, false)
+
+		if uploadErr != nil {
+			glog.Errorf("Failed to upload log artifact: %v", uploadErr)
+		}
+
+		return executorOutput, outputArtifacts, err
 	}
 	// These are not added in execute(), because execute() is shared between v2 compatible and v2 engine launcher.
 	// In v2 compatible mode, we get output parameter info from runtimeInfo. In v2 engine, we get it from component spec.
@@ -394,15 +435,38 @@ func executeV2(
 	if err != nil {
 		return nil, nil, err
 	}
-	// TODO(Bobgy): should we log metadata per each artifact, or batched after uploading all artifacts.
+
 	outputArtifacts, err := uploadOutputArtifacts(ctx, executorInput, executorOutput, uploadOutputArtifactsOptions{
 		bucketConfig:   bucketConfig,
 		bucket:         bucket,
 		metadataClient: metadataClient,
-	})
+	}, true)
+
 	if err != nil {
-		return nil, nil, err
+		glog.Errorf("Failed to upload output artifacts: %v", err)
+
+		glog.Info("Refreshing credentials before retrying artifacts upload.")
+		bucket, err = objectstore.OpenBucket(
+			openBucketConfig.ctx,
+			openBucketConfig.k8sClient,
+			openBucketConfig.namespace,
+			openBucketConfig.config,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		glog.Info("Executing second uploadOutputArtifacts attempt.")
+		outputArtifacts, err = uploadOutputArtifacts(ctx, executorInput, executorOutput, uploadOutputArtifactsOptions{
+			bucketConfig:   bucketConfig,
+			bucket:         bucket,
+			metadataClient: metadataClient,
+		}, true)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
+
 	// TODO(Bobgy): only return executor output. Merge info in output artifacts
 	// to executor output.
 	return executorOutput, outputArtifacts, nil
@@ -449,13 +513,63 @@ func prettyPrint(jsonStr string) string {
 	if err != nil {
 		return jsonStr
 	}
-	return string(prettyJSON.Bytes())
+	return prettyJSON.String()
 }
 
 const OutputMetadataFilepath = "/tmp/kfp_outputs/output_metadata.json"
 
 // We overwrite this as a DI mechanism for testing getLogWriter.
 var osCreateFunc = os.Create
+
+// qualifyExecutorLogsURI appends the retry index to the executor-logs artifact
+// URI so that each Argo retry attempt writes to and registers a distinct,
+// human-readable path in the object store and MLMD (e.g. executor-logs-0,
+// executor-logs-1, …). Without this, all retry pods share the single URI that
+// the driver provisioned before any attempt ran, causing every retry to
+// overwrite the same S3 key and register duplicate MLMD artifacts pointing at
+// stale data.
+func qualifyExecutorLogsURI(artifacts map[string]*pipelinespec.ArtifactList, retryIndex string) {
+	if retryIndex == "" {
+		return
+	}
+	logsArtifactList, ok := artifacts["executor-logs"]
+	if !ok || logsArtifactList == nil || len(logsArtifactList.Artifacts) != 1 {
+		return
+	}
+	art := logsArtifactList.Artifacts[0]
+	if art == nil {
+		return
+	}
+	art.Uri = art.Uri + "-" + retryIndex
+}
+
+// retryIndexFromPodAnnotation reads the Argo node-name annotation on the current
+// pod and parses the 0-based retry index from it. Argo encodes the index as a
+// parenthesised suffix on the node name, e.g. "…executor(3)". This provides a
+// fallback when the KFP_RETRY_INDEX env var (set via {{retries}} in the Argo
+// template) is unavailable, which is the case when an older API server that
+// does not yet inject KFP_RETRY_INDEX is in use.
+func retryIndexFromPodAnnotation(ctx context.Context, k8sClient kubernetes.Interface, namespace, podName string) (string, error) {
+	pod, err := k8sClient.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get pod %s/%s: %w", namespace, podName, err)
+	}
+	nodeName, ok := pod.Annotations["workflows.argoproj.io/node-name"]
+	if !ok {
+		return "", fmt.Errorf("pod %s/%s has no argo node-name annotation", namespace, podName)
+	}
+	// Extract the trailing "(N)" from node names like "…executor(3)".
+	open := strings.LastIndex(nodeName, "(")
+	close := strings.LastIndex(nodeName, ")")
+	if open < 0 || close <= open {
+		return "", fmt.Errorf("argo node-name %q has no retry index suffix", nodeName)
+	}
+	index := nodeName[open+1 : close]
+	if _, err := strconv.Atoi(index); err != nil {
+		return "", fmt.Errorf("argo node-name %q retry index %q is not an integer: %w", nodeName, index, err)
+	}
+	return index, nil
+}
 
 // getLogWriter returns an io.Writer that can either be single-channel to stdout
 // or dual-channel to stdout AND a log file based on the URI of a log artifact
@@ -468,10 +582,10 @@ func getLogWriter(artifacts map[string]*pipelinespec.ArtifactList) (writer io.Wr
 		return os.Stdout
 	}
 
-	logURI := logsArtifactList.Artifacts[0].Uri
-	logFilePath, err := LocalPathForURI(logURI)
+	logArtifact := logsArtifactList.Artifacts[0]
+	logFilePath, err := retrieveArtifactPath(logArtifact)
 	if err != nil {
-		glog.Errorf("Error converting log artifact URI, %s, to file path.", logURI)
+		glog.Errorf("Error converting log artifact URI, %s, to file path.", logArtifact.Uri)
 		return os.Stdout
 	}
 
@@ -496,9 +610,56 @@ func execute(
 	namespace string,
 	k8sClient kubernetes.Interface,
 	publishLogs string,
+	customCAPath string,
 ) (*pipelinespec.ExecutorOutput, error) {
+	// If a custom CA path is input, append to system CA and save to a temp file for executor access.
+	if customCAPath != "" {
+		var caBundleTmpPath string
+		var err error
+		if caBundleTmpPath, err = compileTempCABundleWithCustomCA(customCAPath); err != nil {
+			return nil, err
+		}
+
+		err = os.Setenv("REQUESTS_CA_BUNDLE", caBundleTmpPath)
+		if err != nil {
+			glog.Errorf("Error setting REQUESTS_CA_BUNDLE environment variable, %s", err.Error())
+		}
+		err = os.Setenv("AWS_CA_BUNDLE", caBundleTmpPath)
+		if err != nil {
+			glog.Errorf("Error setting AWS_CA_BUNDLE environment variable, %s", err.Error())
+		}
+		err = os.Setenv("SSL_CERT_FILE", caBundleTmpPath)
+		if err != nil {
+			glog.Errorf("Error setting SSL_CERT_FILE environment variable, %s", err.Error())
+		}
+
+	}
 	if err := downloadArtifacts(ctx, executorInput, bucket, bucketConfig, namespace, k8sClient); err != nil {
 		return nil, err
+	}
+
+	// Qualify the executor-logs URI with the retry index before preparing output
+	// folders so the per-attempt directory is created at the correct path.
+	// Prefer KFP_RETRY_INDEX, which is injected by the Argo compiler as
+	// "{{retries}}" and resolved by Argo at pod creation time. Fall back to
+	// reading the Argo node-name pod annotation, which encodes the index as
+	// executor(N), for compatibility with older API server versions.
+	if publishLogs == "true" {
+		retryIndex := os.Getenv(EnvRetryIndex)
+		if retryIndex == "" {
+			podName := os.Getenv(EnvPodName)
+			if podName != "" && k8sClient != nil && namespace != "" {
+				if idx, err := retryIndexFromPodAnnotation(ctx, k8sClient, namespace, podName); err == nil {
+					retryIndex = idx
+				} else {
+					glog.Warningf("Could not determine retry index from pod annotation, defaulting to 0: %v", err)
+				}
+			}
+		}
+		if retryIndex == "" {
+			retryIndex = "0"
+		}
+		qualifyExecutorLogsURI(executorInput.Outputs.GetArtifacts(), retryIndex)
 	}
 
 	if err := prepareOutputFolders(executorInput); err != nil {
@@ -528,30 +689,95 @@ func execute(
 	return getExecutorOutputFile(executorInput.GetOutputs().GetOutputFile())
 }
 
+// Create a temp file that contains the system CA bundle (and custom CA if it has been mounted).
+func compileTempCABundleWithCustomCA(customCAPath string) (string, error) {
+	// Possible certificate files; stop after finding one. List from https://go.dev/src/crypto/x509/root_linux.go
+	var systemCAs = []string{
+		"/etc/ssl/certs/ca-certificates.crt",
+		"/etc/pki/tls/certs/ca-bundle.crt",
+		"/etc/ssl/ca-bundle.pem",
+		"/etc/pki/tls/cacert.pem",
+		"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+		"/etc/ssl/cert.pem",
+	}
+	sslCertFilePath := os.Getenv("SSL_CERT_FILE")
+	// If SSL_CERT_FILE is set to a different value than the custom CA path, append it to the beginning of the systemCAs slice.
+	if sslCertFilePath != "" && sslCertFilePath != customCAPath {
+		systemCAs = append([]string{sslCertFilePath}, systemCAs...)
+	}
+	tmpCaBundle, err := os.CreateTemp("", "ca-bundle-*.crt")
+	if err != nil {
+		return "", err
+	}
+	var systemCaBundle []byte
+	for _, file := range systemCAs {
+		systemCaBundle, err = os.ReadFile(file)
+		if err != nil {
+			glog.Errorf("Error reading CA bundle file, %s.", err)
+		}
+		// Once a non-nil system CA file is found, break.
+		if systemCaBundle != nil {
+			break
+		}
+	}
+	// Append mounted custom CA cert to System CA bundle.
+	customCa, err := os.ReadFile(customCAPath)
+	if err != nil {
+		return "", err
+	}
+	systemCaBundle = append(systemCaBundle, customCa...)
+	_, err = tmpCaBundle.Write(systemCaBundle)
+	if err != nil {
+		return "", err
+	}
+	// Update temp file permissions to 444 (read-only).
+	err = tmpCaBundle.Chmod(0444)
+	if err != nil {
+		return "", err
+	}
+	// Return filepath for tmpCaBundle
+	return tmpCaBundle.Name(), nil
+}
+
 type uploadOutputArtifactsOptions struct {
 	bucketConfig   *objectstore.Config
 	bucket         *blob.Bucket
 	metadataClient metadata.ClientInterface
 }
 
-func uploadOutputArtifacts(ctx context.Context, executorInput *pipelinespec.ExecutorInput, executorOutput *pipelinespec.ExecutorOutput, opts uploadOutputArtifactsOptions) ([]*metadata.OutputArtifact, error) {
+func uploadOutputArtifacts(
+	ctx context.Context,
+	executorInput *pipelinespec.ExecutorInput,
+	executorOutput *pipelinespec.ExecutorOutput,
+	opts uploadOutputArtifactsOptions,
+	componentSucceeded bool,
+) ([]*metadata.OutputArtifact, error) {
 	// Register artifacts with MLMD.
-	outputArtifacts := make([]*metadata.OutputArtifact, 0, len(executorInput.GetOutputs().GetArtifacts()))
-	for name, artifactList := range executorInput.GetOutputs().GetArtifacts() {
-		if len(artifactList.Artifacts) == 0 {
+	artifacts := executorInput.GetOutputs().GetArtifacts()
+	if !componentSucceeded {
+		// Only register executor log artifact if component execution failed
+		artifacts = map[string]*pipelinespec.ArtifactList{"executor-logs": artifacts["executor-logs"]}
+	}
+
+	outputArtifacts := make([]*metadata.OutputArtifact, 0, len(artifacts))
+
+	for name, artifactList := range artifacts {
+		if artifactList == nil || len(artifactList.Artifacts) == 0 {
 			continue
 		}
 
 		for _, outputArtifact := range artifactList.Artifacts {
-			glog.Infof("outputArtifact in uploadOutputArtifacts call: ", outputArtifact.Name)
+			glog.Infof("outputArtifact in uploadOutputArtifacts call: %s", outputArtifact.Name)
 
 			// Merge executor output artifact info with executor input
-			if list, ok := executorOutput.Artifacts[name]; ok && len(list.Artifacts) > 0 {
-				mergeRuntimeArtifacts(list.Artifacts[0], outputArtifact)
+			if executorOutput != nil {
+				if list, ok := executorOutput.Artifacts[name]; ok && len(list.Artifacts) > 0 {
+					mergeRuntimeArtifacts(list.Artifacts[0], outputArtifact)
+				}
 			}
 
 			// Upload artifacts from local path to remote storages.
-			localDir, err := LocalPathForURI(outputArtifact.Uri)
+			localDir, err := retrieveArtifactPath(outputArtifact)
 			if err != nil {
 				glog.Warningf("Output Artifact %q does not have a recognized storage URI %q. Skipping uploading to remote storage.", name, outputArtifact.Uri)
 			} else if !strings.HasPrefix(outputArtifact.Uri, "oci://") {
@@ -636,7 +862,13 @@ func downloadArtifacts(ctx context.Context, executorInput *pipelinespec.Executor
 		for _, artifact := range artifactList.Artifacts {
 			// Iterating through the artifact list allows for collected artifacts to be properly consumed.
 			inputArtifact := artifact
-			localPath, err := LocalPathForURI(inputArtifact.Uri)
+			// Skip downloading if the artifact is flagged as already present in the workspace
+			if inputArtifact.GetMetadata() != nil {
+				if v, ok := inputArtifact.GetMetadata().GetFields()["_kfp_workspace"]; ok && v.GetBoolValue() {
+					continue
+				}
+			}
+			localPath, err := retrieveArtifactPath(inputArtifact)
 			if err != nil {
 				glog.Warningf("Input Artifact %q does not have a recognized storage URI %q. Skipping downloading to local path.", name, inputArtifact.Uri)
 
@@ -779,7 +1011,21 @@ func getPlaceholders(executorInput *pipelinespec.ExecutorInput) (placeholders ma
 		key := fmt.Sprintf(`{{$.inputs.artifacts['%s'].uri}}`, name)
 		placeholders[key] = inputArtifact.Uri
 
-		localPath, err := LocalPathForURI(inputArtifact.Uri)
+		// If the artifact is marked as already in the workspace, map to the workspace path
+		// with the same shape as LocalPathForURI, but rebased under the workspace mount.
+		if inputArtifact.GetMetadata() != nil {
+			if v, ok := inputArtifact.GetMetadata().GetFields()["_kfp_workspace"]; ok && v.GetBoolValue() {
+				localPath, lerr := LocalWorkspacePathForURI(inputArtifact.Uri)
+				if lerr != nil {
+					return nil, fmt.Errorf("failed to get local workspace path for input artifact %q: %w", name, lerr)
+				}
+				key = fmt.Sprintf(`{{$.inputs.artifacts['%s'].path}}`, name)
+				placeholders[key] = localPath
+				continue
+			}
+		}
+
+		localPath, err := retrieveArtifactPath(inputArtifact)
 		if err != nil {
 			// Input Artifact does not have a recognized storage URI
 			continue
@@ -798,7 +1044,7 @@ func getPlaceholders(executorInput *pipelinespec.ExecutorInput) (placeholders ma
 		outputArtifact := artifactList.Artifacts[0]
 		placeholders[fmt.Sprintf(`{{$.outputs.artifacts['%s'].uri}}`, name)] = outputArtifact.Uri
 
-		localPath, err := LocalPathForURI(outputArtifact.Uri)
+		localPath, err := retrieveArtifactPath(outputArtifact)
 		if err != nil {
 			return nil, fmt.Errorf("resolve output artifact %q's local path: %w", name, err)
 		}
@@ -868,6 +1114,10 @@ func mergeRuntimeArtifacts(src, dst *pipelinespec.RuntimeArtifact) {
 			}
 		}
 	}
+
+	if src.CustomPath != nil && *src.CustomPath != "" {
+		dst.CustomPath = src.CustomPath
+	}
 }
 
 func getExecutorOutputFile(path string) (*pipelinespec.ExecutorOutput, error) {
@@ -917,6 +1167,31 @@ func LocalPathForURI(uri string) (string, error) {
 	return "", fmt.Errorf("failed to generate local path for URI %s: unsupported storage scheme", uri)
 }
 
+func retrieveArtifactPath(artifact *pipelinespec.RuntimeArtifact) (string, error) {
+	// If artifact custom path is set, use custom path. Otherwise, use URI.
+	customPath := artifact.CustomPath
+	if customPath != nil {
+		return *customPath, nil
+	} else {
+		return LocalPathForURI(artifact.Uri)
+	}
+}
+
+// LocalWorkspacePathForURI returns the local workspace path for a given artifact URI.
+// It preserves the same path shape as LocalPathForURI, but rebases it under the
+// workspace artifacts directory: /kfp-workspace/.artifacts/...
+func LocalWorkspacePathForURI(uri string) (string, error) {
+	if strings.HasPrefix(uri, "oci://") {
+		return "", fmt.Errorf("failed to generate workspace path for URI %s: OCI not supported for workspace artifacts", uri)
+	}
+	localPath, err := LocalPathForURI(uri)
+	if err != nil {
+		return "", err
+	}
+	// Rebase under the workspace mount, stripping the leading '/'
+	return filepath.Join(WorkspaceMountPath, ".artifacts", strings.TrimPrefix(localPath, "/")), nil
+}
+
 func prepareOutputFolders(executorInput *pipelinespec.ExecutorInput) error {
 	for name, parameter := range executorInput.GetOutputs().GetParameters() {
 		dir := filepath.Dir(parameter.OutputFile)
@@ -932,7 +1207,7 @@ func prepareOutputFolders(executorInput *pipelinespec.ExecutorInput) error {
 
 		for _, outputArtifact := range artifactList.Artifacts {
 
-			localPath, err := LocalPathForURI(outputArtifact.Uri)
+			localPath, err := retrieveArtifactPath(outputArtifact)
 			if err != nil {
 				return fmt.Errorf("failed to generate local storage path for output artifact %q: %w", name, err)
 			}

@@ -1,18 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: dataset-concatenator-
 spec:
   arguments:
     parameters:
-    - name: components-3e4e63ec82d130c2d86a0de3eb781d6a47ff58129bf5f5aa0aa8891ef448dc7f
+    - name: components-e64230eee42e89b7bed44c01e0e5aadf92c2b123bf1ae03372c1e07eeadee7ff
       value: '{"executorLabel":"exec-dataset-joiner","inputDefinitions":{"artifacts":{"dataset_a":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"},"description":"First
         dataset."},"dataset_b":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"},"description":"Second
         dataset."}}},"outputDefinitions":{"artifacts":{"out_dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"},"description":"The
         concatenated dataset."}},"parameters":{"Output":{"description":"The concatenated
         string.","parameterType":"STRING"}}}}'
-    - name: implementations-3e4e63ec82d130c2d86a0de3eb781d6a47ff58129bf5f5aa0aa8891ef448dc7f
+    - name: implementations-e64230eee42e89b7bed44c01e0e5aadf92c2b123bf1ae03372c1e07eeadee7ff
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","dataset_joiner"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -29,12 +28,12 @@ spec:
         The concatenated string.\n    \"\"\"\n    with open(dataset_a.path) as f:\n        content_a
         = f.read()\n\n    with open(dataset_b.path) as f:\n        content_b = f.read()\n\n    concatenated_string
         = content_a + content_b\n    with open(out_dataset.path, ''w'') as f:\n        f.write(concatenated_string)\n\n    return
-        concatenated_string\n\n"],"image":"python:3.9"}'
-    - name: components-cf015d965d4dbce23b2fa6520b6fd9409bc8c0e0de1513abaf9d5e1c03d3835d
+        concatenated_string\n\n"],"image":"python:3.11"}'
+    - name: components-0067337b015ccea33fdb5b6603365552f4cca4f9eae4b1497bd033c4b3f843b9
       value: '{"executorLabel":"exec-str-to-dataset","inputDefinitions":{"parameters":{"string":{"description":"The
         string.","parameterType":"STRING"}}},"outputDefinitions":{"artifacts":{"dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"},"description":"The
         dataset."}}}}'
-    - name: implementations-cf015d965d4dbce23b2fa6520b6fd9409bc8c0e0de1513abaf9d5e1c03d3835d
+    - name: implementations-0067337b015ccea33fdb5b6603365552f4cca4f9eae4b1497bd033c4b3f843b9
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","str_to_dataset"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -46,7 +45,7 @@ spec:
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
         str_to_dataset(string: str, dataset: Output[Dataset]):\n    \"\"\"Convert
         string to dataset.\n\n    Args:\n        string: The string.\n\n    Returns:\n        dataset:
-        The dataset.\n    \"\"\"\n    with open(dataset.path, ''w'') as f:\n        f.write(string)\n\n"],"image":"python:3.9"}'
+        The dataset.\n    \"\"\"\n    with open(dataset.path, ''w'') as f:\n        f.write(string)\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"outputs":{"artifacts":{"Output":{"artifactSelectors":[{"outputArtifactKey":"out_dataset","producerSubtask":"dataset-joiner"}]}}},"tasks":{"dataset-joiner":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-dataset-joiner"},"dependentTasks":["str-to-dataset"],"inputs":{"artifacts":{"dataset_a":{"taskOutputArtifact":{"outputArtifactKey":"dataset","producerTask":"str-to-dataset"}},"dataset_b":{"componentInputArtifact":"in_dataset"}}},"taskInfo":{"name":"dataset-joiner"}},"str-to-dataset":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-str-to-dataset"},"inputs":{"parameters":{"string":{"componentInputParameter":"string"}}},"taskInfo":{"name":"str-to-dataset"}}}},"inputDefinitions":{"artifacts":{"in_dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"},"description":"Dataset
         to which to concatenate string."}},"parameters":{"string":{"description":"String
@@ -58,6 +57,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -98,23 +101,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -124,6 +129,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -152,6 +165,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -181,10 +198,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -192,6 +205,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -218,9 +238,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -231,6 +259,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -251,11 +282,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-3e4e63ec82d130c2d86a0de3eb781d6a47ff58129bf5f5aa0aa8891ef448dc7f}}'
+            value: '{{workflow.parameters.components-e64230eee42e89b7bed44c01e0e5aadf92c2b123bf1ae03372c1e07eeadee7ff}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-dataset-joiner"},"dependentTasks":["str-to-dataset"],"inputs":{"artifacts":{"dataset_a":{"taskOutputArtifact":{"outputArtifactKey":"dataset","producerTask":"str-to-dataset"}},"dataset_b":{"componentInputArtifact":"in_dataset"}}},"taskInfo":{"name":"dataset-joiner"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-3e4e63ec82d130c2d86a0de3eb781d6a47ff58129bf5f5aa0aa8891ef448dc7f}}'
+            value: '{{workflow.parameters.implementations-e64230eee42e89b7bed44c01e0e5aadf92c2b123bf1ae03372c1e07eeadee7ff}}'
           - name: task-name
             value: dataset-joiner
           - name: parent-dag-id
@@ -276,11 +307,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-cf015d965d4dbce23b2fa6520b6fd9409bc8c0e0de1513abaf9d5e1c03d3835d}}'
+            value: '{{workflow.parameters.components-0067337b015ccea33fdb5b6603365552f4cca4f9eae4b1497bd033c4b3f843b9}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-str-to-dataset"},"inputs":{"parameters":{"string":{"componentInputParameter":"string"}}},"taskInfo":{"name":"str-to-dataset"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-cf015d965d4dbce23b2fa6520b6fd9409bc8c0e0de1513abaf9d5e1c03d3835d}}'
+            value: '{{workflow.parameters.implementations-0067337b015ccea33fdb5b6603365552f4cca4f9eae4b1497bd033c4b3f843b9}}'
           - name: task-name
             value: str-to-dataset
           - name: parent-dag-id
@@ -339,23 +370,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -365,6 +389,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -395,6 +427,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

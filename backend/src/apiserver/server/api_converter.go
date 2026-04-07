@@ -156,6 +156,7 @@ func toApiExperiments(experiments []*model.Experiment) []*apiv2beta1.Experiment 
 // Supports both v1beta1 abd v2beta1 API.
 func toModelPipeline(p interface{}) (*model.Pipeline, error) {
 	var name, displayName, namespace, description string
+	var tags map[string]string
 
 	switch apiPipeline := p.(type) {
 	case *apiv1beta1.Pipeline:
@@ -168,6 +169,7 @@ func toModelPipeline(p interface{}) (*model.Pipeline, error) {
 		name = apiPipeline.GetName()
 		displayName = apiPipeline.GetDisplayName()
 		description = apiPipeline.GetDescription()
+		tags = apiPipeline.GetTags()
 	default:
 		return nil, util.NewUnknownApiVersionError("Pipeline", p)
 	}
@@ -189,6 +191,7 @@ func toModelPipeline(p interface{}) (*model.Pipeline, error) {
 		Namespace:   namespace,
 		Description: model.LargeText(description),
 		Status:      model.PipelineCreating,
+		Tags:        tags,
 	}
 
 	if err := validation.ValidateModel(pipeline); err != nil {
@@ -317,6 +320,7 @@ func toApiPipeline(pipeline *model.Pipeline) *apiv2beta1.Pipeline {
 		Description: string(pipeline.Description),
 		CreatedAt:   timestamppb.New(time.Unix(pipeline.CreatedAtInSec, 0)),
 		Namespace:   pipeline.Namespace,
+		Tags:        pipeline.Tags,
 	}
 }
 
@@ -383,6 +387,12 @@ func toModelPipelineVersion(p interface{}) (*model.PipelineVersion, error) {
 	if displayName == "" {
 		displayName = name
 	}
+	// Extract tags if present (v2beta1 only)
+	var tags map[string]string
+	if apiPv, ok := p.(*apiv2beta1.PipelineVersion); ok {
+		tags = apiPv.GetTags()
+	}
+
 	pv := &model.PipelineVersion{
 		Name:            name,
 		DisplayName:     displayName,
@@ -391,6 +401,7 @@ func toModelPipelineVersion(p interface{}) (*model.PipelineVersion, error) {
 		CodeSourceUrl:   codeUrl,
 		Description:     model.LargeText(description),
 		Status:          model.PipelineVersionCreating,
+		Tags:            tags,
 	}
 	if err := validation.ValidateModel(pv); err != nil {
 		return nil, util.NewInternalServerError(
@@ -483,6 +494,7 @@ func toApiPipelineVersion(pv *model.PipelineVersion) *apiv2beta1.PipelineVersion
 		DisplayName:       pv.DisplayName,
 		Description:       string(pv.Description),
 		CreatedAt:         timestamppb.New(time.Unix(pv.CreatedAtInSec, 0)),
+		Tags:              pv.Tags,
 	}
 
 	// Infer pipeline url
@@ -1278,7 +1290,7 @@ func toModelRun(r interface{}) (*model.Run, error) {
 					pipelineVersionId = resources["PipelineVersionId"]
 				}
 				if runId == "" {
-					runId = resources["RunId"]
+					runId = resources["RunID"]
 				}
 				if recRunId == "" {
 					recRunId = resources["RecurringRunId"]
@@ -1689,7 +1701,7 @@ func toModelTask(t interface{}) (*model.Task, error) {
 		PodName:           nodeId,
 		Namespace:         namespace,
 		PipelineName:      pipelineName,
-		RunId:             runId,
+		RunID:             runId,
 		MLMDExecutionID:   mlmdExecId,
 		CreatedTimestamp:  createTime,
 		StartedTimestamp:  startTime,
@@ -1742,7 +1754,7 @@ func toModelTasks(t interface{}) ([]*model.Task, error) {
 			if err != nil {
 				return nil, util.Wrap(err, "Failed to convert Argo workflow to tasks details")
 			}
-			modelTask.RunId = runId
+			modelTask.RunID = runId
 			modelTask.Namespace = namespace
 			modelTask.CreatedTimestamp = createdAt
 			modelTasks = append(modelTasks, modelTask)
@@ -1760,7 +1772,7 @@ func toApiTaskV1(task *model.Task) *apiv1beta1.Task {
 		Id:              task.UUID,
 		Namespace:       task.Namespace,
 		PipelineName:    task.PipelineName,
-		RunId:           task.RunId,
+		RunId:           task.RunID,
 		MlmdExecutionID: task.MLMDExecutionID,
 		CreatedAt:       timestamppb.New(time.Unix(task.CreatedTimestamp, 0)),
 		FinishedAt:      timestamppb.New(time.Unix(task.FinishedTimestamp, 0)),
@@ -1781,7 +1793,7 @@ func toApiPipelineTaskDetail(t *model.Task) *apiv2beta1.PipelineTaskDetail {
 		err = json.Unmarshal([]byte(t.MLMDInputs), &inputArtifacts)
 		if err != nil {
 			return &apiv2beta1.PipelineTaskDetail{
-				RunId:  t.RunId,
+				RunId:  t.RunID,
 				TaskId: t.UUID,
 				Error:  util.ToRpcStatus(util.NewInternalServerError(err, "Failed to convert task's internal representation to its API counterpart due to error parsing inputs")),
 			}
@@ -1792,7 +1804,7 @@ func toApiPipelineTaskDetail(t *model.Task) *apiv2beta1.PipelineTaskDetail {
 		err = json.Unmarshal([]byte(t.MLMDOutputs), &outputArtifacts)
 		if err != nil {
 			return &apiv2beta1.PipelineTaskDetail{
-				RunId:  t.RunId,
+				RunId:  t.RunID,
 				TaskId: t.UUID,
 				Error:  util.ToRpcStatus(util.NewInternalServerError(err, "Failed to convert task's internal representation to its API counterpart due to error parsing outputs")),
 			}
@@ -1805,7 +1817,7 @@ func toApiPipelineTaskDetail(t *model.Task) *apiv2beta1.PipelineTaskDetail {
 		})
 	}
 	return &apiv2beta1.PipelineTaskDetail{
-		RunId:        t.RunId,
+		RunId:        t.RunID,
 		TaskId:       t.UUID,
 		DisplayName:  t.Name,
 		CreateTime:   timestamppb.New(time.Unix(t.CreatedTimestamp, 0)),

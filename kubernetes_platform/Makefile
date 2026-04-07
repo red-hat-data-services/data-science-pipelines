@@ -17,7 +17,7 @@ PREBUILT_REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator:master
 # Set USE_FIND_LINKS=true to use local sdk and pipeline_spec for buildling python builds rather than pulling from pypi
 # applies to `make python` and make pythone-dev` commands.
 # e.g. make python USE_FIND_LINKS=true FIND_LINKS_PATH="path1 path2 ..."
-FIND_LINKS_PATH := /go/src/github.com/kubeflow/pipelines/sdk/python/dist /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python/dist
+FIND_LINKS_PATH := /go/src/github.com/kubeflow/pipelines/sdk/python/dist /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python/dist /go/src/github.com/kubeflow/pipelines/backend/api/v2beta1/python_http_client/dist
 
 .PHONY: all
 all: golang python
@@ -55,7 +55,7 @@ python: proto/kubernetes_executor_config.proto fetch-protos
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/kubernetes_platform/python && \
 		    python3 -m pip install --user --break-system-packages -r requirements.txt && \
 		    python3 generate_proto.py && \
-		    python3 setup.py sdist bdist_wheel --dist-dir ./dist'
+		    python3 setup.py sdist && pip wheel --no-deps dist/*.tar.gz -w dist'
 
 # Build and install in editable mode using pre-built image
 .PHONY: python-dev
