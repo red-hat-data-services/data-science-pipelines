@@ -1,14 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: pipeline-with-placeholders-
 spec:
   arguments:
     parameters:
-    - name: components-1c2d9ee5193f6bab323886b46d1c14a22e2f07a25c79fd4e264b5f797275a7cb
+    - name: components-252e4a170354e881b8fd2729c1e3ee58684e5eee1443c6782901dd4330265f5e
       value: '{"executorLabel":"exec-print-all-placeholders","inputDefinitions":{"parameters":{"job_id":{"parameterType":"STRING"},"job_name":{"parameterType":"STRING"},"job_resource_name":{"parameterType":"STRING"},"task_id":{"parameterType":"STRING"},"task_name":{"parameterType":"STRING"}}}}'
-    - name: implementations-1c2d9ee5193f6bab323886b46d1c14a22e2f07a25c79fd4e264b5f797275a7cb
+    - name: implementations-252e4a170354e881b8fd2729c1e3ee58684e5eee1443c6782901dd4330265f5e
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","print_all_placeholders"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -25,7 +24,7 @@ spec:
         \"\":\n            raise RuntimeError(\n                \"Expected the placeholder
         to be replaced with a value: \" + placeholder\n            )\n\n    assert
         task_name == \"print-all-placeholders\"\n    assert job_resource_name.startswith(\"pipeline-with-placeholders-\")\n\n    output
-        = \", \".join(allPlaceholders)\n    print(output)\n\n"],"image":"python:3.9"}'
+        = \", \".join(allPlaceholders)\n    print(output)\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"tasks":{"print-all-placeholders":{"cachingOptions":{},"componentRef":{"name":"comp-print-all-placeholders"},"inputs":{"parameters":{"job_id":{"runtimeValue":{"constant":"{{$.pipeline_job_uuid}}"}},"job_name":{"runtimeValue":{"constant":"{{$.pipeline_job_name}}"}},"job_resource_name":{"runtimeValue":{"constant":"{{$.pipeline_job_resource_name}}"}},"task_id":{"runtimeValue":{"constant":"{{$.pipeline_task_uuid}}"}},"task_name":{"runtimeValue":{"constant":"{{$.pipeline_task_name}}"}}}},"taskInfo":{"name":"print-all-placeholders"}}}}}'
   entrypoint: entrypoint
@@ -34,6 +33,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -74,23 +77,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -100,6 +105,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -128,6 +141,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -157,10 +174,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -168,6 +181,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -194,9 +214,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -207,6 +235,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -227,11 +258,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-1c2d9ee5193f6bab323886b46d1c14a22e2f07a25c79fd4e264b5f797275a7cb}}'
+            value: '{{workflow.parameters.components-252e4a170354e881b8fd2729c1e3ee58684e5eee1443c6782901dd4330265f5e}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-print-all-placeholders"},"inputs":{"parameters":{"job_id":{"runtimeValue":{"constant":"{{$.pipeline_job_uuid}}"}},"job_name":{"runtimeValue":{"constant":"{{$.pipeline_job_name}}"}},"job_resource_name":{"runtimeValue":{"constant":"{{$.pipeline_job_resource_name}}"}},"task_id":{"runtimeValue":{"constant":"{{$.pipeline_task_uuid}}"}},"task_name":{"runtimeValue":{"constant":"{{$.pipeline_task_name}}"}}}},"taskInfo":{"name":"print-all-placeholders"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-1c2d9ee5193f6bab323886b46d1c14a22e2f07a25c79fd4e264b5f797275a7cb}}'
+            value: '{{workflow.parameters.implementations-252e4a170354e881b8fd2729c1e3ee58684e5eee1443c6782901dd4330265f5e}}'
           - name: task-name
             value: print-all-placeholders
           - name: parent-dag-id
@@ -290,23 +321,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -316,6 +340,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -346,6 +378,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

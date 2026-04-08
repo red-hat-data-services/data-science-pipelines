@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -24,10 +23,11 @@ import (
 	"github.com/kubeflow/pipelines/backend/api/v1beta1/go_http_client/pipeline_model"
 	uploadParams "github.com/kubeflow/pipelines/backend/api/v1beta1/go_http_client/pipeline_upload_client/pipeline_upload_service"
 	pipelinetemplate "github.com/kubeflow/pipelines/backend/src/apiserver/template"
-	api_server "github.com/kubeflow/pipelines/backend/src/common/client/api_server/v1"
+	"github.com/kubeflow/pipelines/backend/src/common/client/api_server/v1"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/kubeflow/pipelines/backend/test"
 	"github.com/kubeflow/pipelines/backend/test/config"
+	"github.com/kubeflow/pipelines/backend/test/testutil"
 
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +44,7 @@ type PipelineVersionApiTest struct {
 	suite.Suite
 	namespace            string
 	repoName             string
+	branchName           string
 	pipelineClient       *api_server.PipelineClient
 	pipelineUploadClient *api_server.PipelineUploadClient
 }
@@ -86,6 +87,7 @@ func (s *PipelineVersionApiTest) SetupTest() {
 	}
 
 	s.repoName = *config.REPO_NAME
+	s.branchName = *config.BRANCH_NAME
 
 	var err error
 	s.pipelineUploadClient, err = newPipelineUploadClient()
@@ -146,12 +148,14 @@ func (s *PipelineVersionApiTest) TestArgoSpec() {
 	assert.Contains(t, err.Error(), "Failed to upload pipeline version")
 
 	/* ---------- Import pipeline version YAML by URL ---------- */
+	pipelineURL, err := testutil.GetRepoBranchURLRAW(s.repoName, s.branchName, "backend/test/v2/resources/sequential.yaml")
+	require.Nil(t, err)
 	time.Sleep(1 * time.Second)
 	sequentialPipelineVersion, err := s.pipelineClient.CreatePipelineVersion(&params.PipelineServiceCreatePipelineVersionV1Params{
 		Version: &pipeline_model.APIPipelineVersion{
 			Name: "sequential",
 			PackageURL: &pipeline_model.APIURL{
-				PipelineURL: "https://raw.githubusercontent.com/kubeflow/pipelines/refs/heads/master/backend/test/v2/resources/sequential.yaml",
+				PipelineURL: pipelineURL,
 			},
 			ResourceReferences: []*pipeline_model.APIResourceReference{
 				{
@@ -167,7 +171,7 @@ func (s *PipelineVersionApiTest) TestArgoSpec() {
 	/* ---------- Upload pipeline version zip ---------- */
 	time.Sleep(1 * time.Second)
 	argumentUploadPipelineVersion, err := s.pipelineUploadClient.UploadPipelineVersion(
-		"../resources/arguments.pipeline.zip", &uploadParams.UploadPipelineVersionParams{
+		"../resources/arguments_parameters.zip", &uploadParams.UploadPipelineVersionParams{
 			Name:       util.StringPointer("zip-arguments-parameters"),
 			Pipelineid: util.StringPointer(pipelineId),
 		})
@@ -176,11 +180,8 @@ func (s *PipelineVersionApiTest) TestArgoSpec() {
 
 	/* ---------- Import pipeline tarball by URL ---------- */
 	time.Sleep(1 * time.Second)
-	pipelineURL := fmt.Sprintf("https://github.com/%s/raw/refs/heads/master/backend/test/resources/arguments.pipeline.zip", s.repoName)
-
-	if pullNumber := os.Getenv("PULL_NUMBER"); pullNumber != "" {
-		pipelineURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/pull/%s/head/backend/test/resources/arguments.pipeline.zip", s.repoName, pullNumber)
-	}
+	pipelineURL, err = testutil.GetRepoBranchURLRAW(s.repoName, s.branchName, "backend/test/resources/arguments_parameters.zip")
+	require.Nil(t, err)
 
 	argumentUrlPipelineVersion, err := s.pipelineClient.CreatePipelineVersion(&params.PipelineServiceCreatePipelineVersionV1Params{
 		Version: &pipeline_model.APIPipelineVersion{
@@ -334,14 +335,14 @@ func (s *PipelineVersionApiTest) TestArgoSpec() {
 			{Name: "param2"},
 		}, "Found wrong parameters in the pipeline version: %s", pipelineVersion.Name)
 
-	/* ---------- Verify get template works ---------- */
-	template, err := s.pipelineClient.GetPipelineVersionTemplate(&params.PipelineServiceGetPipelineVersionTemplateParams{VersionID: argumentYAMLPipelineVersion.ID})
+	/* ---------- Verify get tmpl works ---------- */
+	tmpl, err := s.pipelineClient.GetPipelineVersionTemplate(&params.PipelineServiceGetPipelineVersionTemplateParams{VersionID: argumentYAMLPipelineVersion.ID})
 	require.Nil(t, err)
 	bytes, err := os.ReadFile("../resources/arguments-parameters.yaml")
 	require.Nil(t, err)
-	expected, err := pipelinetemplate.New(bytes, true, nil)
+	expected, err := pipelinetemplate.New(bytes, pipelinetemplate.TemplateOptions{CacheDisabled: true})
 	require.Nil(t, err)
-	assert.Equal(t, expected, template)
+	assert.Equal(t, expected, tmpl)
 }
 
 func (s *PipelineVersionApiTest) TestV2Spec() {
@@ -368,13 +369,13 @@ func (s *PipelineVersionApiTest) TestV2Spec() {
 	assert.Equal(t, "v2-hello-world", v2Version.Name)
 
 	/* ---------- Verify get template works ---------- */
-	template, err := s.pipelineClient.GetPipelineVersionTemplate(&params.PipelineServiceGetPipelineVersionTemplateParams{VersionID: v2Version.ID})
+	tmpl, err := s.pipelineClient.GetPipelineVersionTemplate(&params.PipelineServiceGetPipelineVersionTemplateParams{VersionID: v2Version.ID})
 	require.Nil(t, err)
 	bytes, err := os.ReadFile("../resources/v2-hello-world.yaml")
 	require.Nil(t, err)
-	expected, err := pipelinetemplate.New(bytes, true, nil)
+	expected, err := pipelinetemplate.New(bytes, pipelinetemplate.TemplateOptions{CacheDisabled: true})
 	require.Nil(t, err)
-	assert.Equal(t, expected, template, "Discrepancy found in template's pipeline name. Created pipeline's name - %s.", pipeline.Name)
+	assert.Equal(t, expected, tmpl, "Discrepancy found in template's pipeline name. Created pipeline's name - %s.", pipeline.Name)
 }
 
 func TestPipelineVersionAPI(t *testing.T) {

@@ -1,7 +1,6 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: pipeline-with-importer-
 spec:
   arguments:
@@ -14,9 +13,9 @@ spec:
       value: '{"executorLabel":"exec-importer-2","inputDefinitions":{"parameters":{"metadata":{"parameterType":"STRING"},"metadata-2":{"parameterType":"STRING"},"metadata-3":{"parameterType":"NUMBER_INTEGER"},"uri":{"parameterType":"STRING"}}},"outputDefinitions":{"artifacts":{"artifact":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}}}}'
     - name: implementations-comp-importer-2
       value: '{"artifactUri":{"constant":"gs://ml-pipeline-playground/shakespeare1.txt"},"metadata":{"containerSpec":{"imageUri":"us-docker.pkg.dev/vertex-ai/prediction/tf2-gpu.2-5:latest"},"list-of-data":["{{$.inputs.parameters[''metadata'']}}","{{$.inputs.parameters[''metadata-2'']}}","{{$.inputs.parameters[''metadata-3'']}}"],"name":"prefix-{{$.inputs.parameters[''metadata'']}}","{{$.inputs.parameters[''metadata'']}}":"{{$.inputs.parameters[''metadata'']}}","{{$.inputs.parameters[''metadata-2'']}}":"us-docker.pkg.dev/vertex-ai/prediction/tf2-gpu.2-5:latest"},"typeSchema":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}'
-    - name: components-958372f93b012956585660b34fdee7e4ee56bc8305edc68a225e8d9fd0e274f2
+    - name: components-1f5c6ec51212707117cf959e66eed87794baf9ac92c3f57c43a8e3ce06397f03
       value: '{"executorLabel":"exec-make-name","inputDefinitions":{"parameters":{"name":{"parameterType":"STRING"}}},"outputDefinitions":{"parameters":{"Output":{"parameterType":"STRING"}}}}'
-    - name: implementations-958372f93b012956585660b34fdee7e4ee56bc8305edc68a225e8d9fd0e274f2
+    - name: implementations-1f5c6ec51212707117cf959e66eed87794baf9ac92c3f57c43a8e3ce06397f03
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","make_name"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -26,7 +25,7 @@ spec:
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
         -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
-        make_name(name: str) -\u003e str:\n    return name\n\n"],"image":"python:3.9"}'
+        make_name(name: str) -\u003e str:\n    return name\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"tasks":{"importer":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-importer"},"inputs":{"parameters":{"metadata":{"componentInputParameter":"name"},"metadata-2":{"componentInputParameter":"pipeline_input_image_uri"},"uri":{"componentInputParameter":"pipeline_input_artifact_uri"}}},"taskInfo":{"name":"importer"}},"importer-2":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-importer-2"},"dependentTasks":["make-name"],"inputs":{"parameters":{"metadata":{"taskOutputParameter":{"outputParameterKey":"Output","producerTask":"make-name"}},"metadata-2":{"componentInputParameter":"name"},"metadata-3":{"componentInputParameter":"int_input"},"uri":{"runtimeValue":{"constant":"gs://ml-pipeline-playground/shakespeare1.txt"}}}},"taskInfo":{"name":"importer-2"}},"make-name":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-make-name"},"inputs":{"parameters":{"name":{"runtimeValue":{"constant":"a-different-name"}}}},"taskInfo":{"name":"make-name"}}}},"inputDefinitions":{"parameters":{"int_input":{"defaultValue":1,"isOptional":true,"parameterType":"NUMBER_INTEGER"},"name":{"defaultValue":"default-name","isOptional":true,"parameterType":"STRING"},"pipeline_input_artifact_uri":{"defaultValue":"gs://ml-pipeline-playground/shakespeare1.txt","isOptional":true,"parameterType":"STRING"},"pipeline_input_image_uri":{"defaultValue":"us-docker.pkg.dev/vertex-ai/prediction/tf2-gpu.2-5:latest","isOptional":true,"parameterType":"STRING"}}}}'
   entrypoint: entrypoint
@@ -35,6 +34,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -58,13 +61,9 @@ spec:
       - --pod_uid
       - $(KFP_POD_UID)
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - launcher-v2
       env:
@@ -89,6 +88,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: task
@@ -98,6 +105,10 @@ spec:
     metadata: {}
     name: system-importer
     outputs: {}
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - container:
       args:
       - --type
@@ -136,23 +147,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -162,6 +175,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -190,6 +211,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -219,10 +244,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -230,6 +251,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -256,9 +284,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -269,6 +305,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -313,11 +352,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-958372f93b012956585660b34fdee7e4ee56bc8305edc68a225e8d9fd0e274f2}}'
+            value: '{{workflow.parameters.components-1f5c6ec51212707117cf959e66eed87794baf9ac92c3f57c43a8e3ce06397f03}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-make-name"},"inputs":{"parameters":{"name":{"runtimeValue":{"constant":"a-different-name"}}}},"taskInfo":{"name":"make-name"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-958372f93b012956585660b34fdee7e4ee56bc8305edc68a225e8d9fd0e274f2}}'
+            value: '{{workflow.parameters.implementations-1f5c6ec51212707117cf959e66eed87794baf9ac92c3f57c43a8e3ce06397f03}}'
           - name: task-name
             value: make-name
           - name: parent-dag-id
@@ -376,23 +415,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -402,6 +434,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -432,6 +472,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

@@ -7,7 +7,11 @@ env:
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - main
+      - stable
+      - 'rhoai-*'
 
   workflow_dispatch:
     inputs:
@@ -42,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure Input Variables
         shell: bash
@@ -52,7 +56,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TEST_LABEL=${{ inputs.test_label }}
           fi
-          echo "TEST_LABEL=$TEST_LABEL" >> $GITHUB_OUTPUT
+          echo "TEST_LABEL=$TEST_LABEL" >> "$GITHUB_OUTPUT"
 
       - name: Run Tests
         uses: ./.github/actions/test-and-report
@@ -63,9 +67,4 @@ jobs:
           test_label: ${{ steps.configure.outputs.TEST_LABEL }}
           python_version: ${{ env.PYTHON_VERSION }}
           report_name: "Workflow Compiler Tests"
-
-      - name: Notify test reports
-        shell: bash
-        if: ${{ steps.test-run.outcome == 'success' }}
-        run: |
-          echo "::notice title=Test Summary and HTML Report is now available in the Summary Tab"
+          skip_api_config: 'true'

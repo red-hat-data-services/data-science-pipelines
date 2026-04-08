@@ -1,23 +1,24 @@
 {
-  "platforms":  {
-    "kubernetes":  {
-      "deployment_spec":  {
-        "executors":  {
-          "root-executor":  {
-            "container":  {
-              "image":  "test-image"
+  "platforms": {
+    "kubernetes": {
+      "deployment_spec": {
+        "executors": {
+          "root-executor": {
+            "container": {
+              "image": "test-image"
             }
           }
         }
       },
-      "platform":  "kubernetes",
-      "config":  {
-        "project":  "test-project"
+      "platform": "kubernetes",
+      "config": {
+        "project": "test-project"
       },
-      "pipelineConfig":  {
-        "semaphore_key":  "test-key",
-        "mutex_name":  "test-mutex",
-        "resource_ttl":  24
+      "pipelineConfig": {
+        "resource_ttl_on_completion": 24,
+        "resource_ttl_on_success": 0,
+        "resource_ttl_on_failure": 0,
+        "active_deadline_seconds": 0
       }
     }
   }
