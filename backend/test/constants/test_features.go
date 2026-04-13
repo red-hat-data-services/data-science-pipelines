@@ -16,12 +16,20 @@
 package constants
 
 const (
+	// Smoke - quality gate tag for smoke testing
+	Smoke string = "smoke"
+	// Sanity - quality gate tag for sanity level testing
+	Sanity string = "sanity"
+	// Integration - quality gate tag for integration testing with other components
+	Integration = "integration"
 	// E2eEssential - For pipelines that are essential for regression testing
 	E2eEssential string = "E2EEssential"
 	// E2eFailed - For expectedly failing pipelines
 	E2eFailed string = "E2EFailure"
 	// E2eCritical - For pipelines that verify the critical functionality of the system
 	E2eCritical string = "E2ECritical"
+	// E2eParallelNested - For parallel or nested pipelines for regression testing
+	E2eParallelNested string = "E2EParallelNested"
 	// E2eProxy - For pipeline that runs with a proxy
 	E2eProxy string = "E2EProxy"
 

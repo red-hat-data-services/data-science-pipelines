@@ -1,14 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: nb-simple-
 spec:
   arguments:
     parameters:
-    - name: components-6cb96369cb79941c813048ffcedc1b2b4dc48a280367899eadca221221c54b92
+    - name: components-b5cadd2bcc71c6f13dc450182b4eb137eb62b94bdd5a170d964d6f8dec0260a5
       value: '{"executorLabel":"exec-run-train-notebook","inputDefinitions":{"parameters":{"text":{"parameterType":"STRING"}}}}'
-    - name: implementations-6cb96369cb79941c813048ffcedc1b2b4dc48a280367899eadca221221c54b92
+    - name: implementations-b5cadd2bcc71c6f13dc450182b4eb137eb62b94bdd5a170d964d6f8dec0260a5
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","run_train_notebook"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -116,7 +115,7 @@ spec:
         = kfp_run_notebook\n\n\ndef run_train_notebook(text: str):\n    # text is
         not defined in the notebook but text2 is defined\n    dsl.run_notebook(text=text)\n\n    with
         open(\"/tmp/kfp_nb_outputs/log.txt\", \"r\", encoding=\"utf-8\") as f:\n        log
-        = f.read()\n\n    assert log == text + \" \" + \"default2\"\n\n"],"image":"python:3.9"}'
+        = f.read()\n\n    assert log == text + \" \" + \"default2\"\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"tasks":{"run-train-notebook":{"cachingOptions":{},"componentRef":{"name":"comp-run-train-notebook"},"inputs":{"parameters":{"text":{"componentInputParameter":"text"}}},"taskInfo":{"name":"run-train-notebook"}}}},"inputDefinitions":{"parameters":{"text":{"defaultValue":"hello","isOptional":true,"parameterType":"STRING"}}}}'
   entrypoint: entrypoint
@@ -125,6 +124,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -165,23 +168,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -191,6 +196,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -219,6 +232,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -248,10 +265,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -259,6 +272,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -285,9 +305,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -298,6 +326,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -318,11 +349,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-6cb96369cb79941c813048ffcedc1b2b4dc48a280367899eadca221221c54b92}}'
+            value: '{{workflow.parameters.components-b5cadd2bcc71c6f13dc450182b4eb137eb62b94bdd5a170d964d6f8dec0260a5}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-run-train-notebook"},"inputs":{"parameters":{"text":{"componentInputParameter":"text"}}},"taskInfo":{"name":"run-train-notebook"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-6cb96369cb79941c813048ffcedc1b2b4dc48a280367899eadca221221c54b92}}'
+            value: '{{workflow.parameters.implementations-b5cadd2bcc71c6f13dc450182b4eb137eb62b94bdd5a170d964d6f8dec0260a5}}'
           - name: task-name
             value: run-train-notebook
           - name: parent-dag-id
@@ -381,23 +412,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -407,6 +431,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -437,6 +469,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

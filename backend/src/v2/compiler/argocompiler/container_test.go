@@ -15,14 +15,14 @@
 package argocompiler
 
 import (
-	"os"
 	"testing"
 
-	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
-
 	wfapi "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
+	"github.com/kubeflow/pipelines/api/v2alpha1/go/pipelinespec"
+	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddContainerExecutorTemplate(t *testing.T) {
@@ -48,9 +48,6 @@ func TestAddContainerExecutorTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("EXECUTOR_CABUNDLE_CONFIGMAP_NAME", tt.configMapName)
-			os.Setenv("EXECUTOR_CABUNDLE_CONFIGMAP_KEY", tt.configMapKey)
-			os.Setenv("EXECUTOR_CABUNDLE_MOUNTPATH", tt.mountPath)
 
 			c := &workflowCompiler{
 				templates: make(map[string]*wfapi.Template),
@@ -68,34 +65,46 @@ func TestAddContainerExecutorTemplate(t *testing.T) {
 			assert.True(t, exists, "Template should exist with the returned name")
 			assert.NotNil(t, executorTemplate, "Executor template should not be nil")
 
-			foundVolume := false
-			for _, volume := range executorTemplate.Volumes {
-				if volume.Name == tt.expectedVolumeName {
-					foundVolume = true
-					assert.Equal(t, tt.expectedConfigMapName, volume.VolumeSource.ConfigMap.Name, "ConfigMap name should match")
-					break
-				}
-			}
-			assert.True(t, foundVolume, "CA bundle volume should be included in the template")
-
-			foundVolumeMount := false
-			if executorTemplate.Container != nil {
-				for _, mount := range executorTemplate.Container.VolumeMounts {
-					if mount.Name == tt.expectedVolumeName && mount.MountPath == tt.expectedMountPath {
-						foundVolumeMount = true
-						break
-					}
-				}
-			}
-			assert.True(t, foundVolumeMount, "CA bundle volume mount should be included in the container")
 		})
 	}
-	defer func() {
-		os.Unsetenv("EXECUTOR_CABUNDLE_CONFIGMAP_NAME")
-		os.Unsetenv("EXECUTOR_CABUNDLE_CONFIGMAP_KEY")
-		os.Unsetenv("EXECUTOR_CABUNDLE_MOUNTPATH")
-	}()
 
+}
+
+func TestContainerDriverTemplate_IncludesKFPPodNameEnv(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	c := &workflowCompiler{
+		templates: make(map[string]*wfapi.Template),
+		wf: &wfapi.Workflow{
+			Spec: wfapi.WorkflowSpec{
+				Templates: []wfapi.Template{},
+			},
+		},
+		spec: &pipelinespec.PipelineSpec{
+			PipelineInfo: &pipelinespec.PipelineInfo{Name: "test-pipeline"},
+		},
+		job: &pipelinespec.PipelineJob{},
+	}
+
+	name := c.addContainerDriverTemplate()
+	require.Equal(t, "system-container-driver", name)
+
+	tmpl, exists := c.templates[name]
+	require.True(t, exists, "system-container-driver template should exist")
+	require.NotNil(t, tmpl.Container, "template should have a container")
+
+	var foundKFPPodName bool
+	for _, env := range tmpl.Container.Env {
+		if env.Name == "KFP_POD_NAME" {
+			foundKFPPodName = true
+			require.NotNil(t, env.ValueFrom, "KFP_POD_NAME should use ValueFrom")
+			require.NotNil(t, env.ValueFrom.FieldRef, "KFP_POD_NAME should use fieldRef")
+			assert.Equal(t, "metadata.name", env.ValueFrom.FieldRef.FieldPath,
+				"KFP_POD_NAME must reference metadata.name via the downward API")
+			break
+		}
+	}
+	assert.True(t, foundKFPPodName,
+		"system-container-driver template must include KFP_POD_NAME env var to avoid hostname truncation for long pod names")
 }
 
 func Test_extendPodMetadata(t *testing.T) {

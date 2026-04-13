@@ -1,7 +1,6 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: make-language-model-pipeline-
 spec:
   arguments:
@@ -10,9 +9,9 @@ spec:
       value: '{"executorLabel":"exec-importer","inputDefinitions":{"parameters":{"uri":{"parameterType":"STRING"}}},"outputDefinitions":{"artifacts":{"artifact":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}}}}'
     - name: implementations-comp-importer
       value: '{"artifactUri":{"constant":"gs://ml-pipeline-playground/shakespeare1.txt"},"metadata":{"key":"value"},"typeSchema":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}'
-    - name: components-c8e04e29003554b439081c46cb32438ef1f27bc6030910c9c95c7df619a4084b
+    - name: components-4351a2bfc0420795b356dad17db637309898c44eae821502eab5e2c753a1cddb
       value: '{"executorLabel":"exec-make-language-model","inputDefinitions":{"artifacts":{"text_dataset":{"artifactType":{"schemaTitle":"system.Dataset","schemaVersion":"0.0.1"}}}},"outputDefinitions":{"artifacts":{"Output":{"artifactType":{"schemaTitle":"system.Model","schemaVersion":"0.0.1"}}}}}'
-    - name: implementations-c8e04e29003554b439081c46cb32438ef1f27bc6030910c9c95c7df619a4084b
+    - name: implementations-4351a2bfc0420795b356dad17db637309898c44eae821502eab5e2c753a1cddb
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","make_language_model"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -29,7 +28,7 @@ spec:
         on text here #\n\n    def dummy_model(x: str) -\u003e str:\n        return
         x\n\n    model = Model(\n        uri=dsl.get_uri(suffix=''model''),\n        metadata={''data'':
         text_dataset.name},\n    )\n\n    with open(model.path, ''wb'') as f:\n        dill.dump(dummy_model,
-        f)\n\n    return model\n\n"],"image":"python:3.9"}'
+        f)\n\n    return model\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"outputs":{"artifacts":{"Output":{"artifactSelectors":[{"outputArtifactKey":"Output","producerSubtask":"make-language-model"}]}}},"tasks":{"importer":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-importer"},"inputs":{"parameters":{"uri":{"runtimeValue":{"constant":"gs://ml-pipeline-playground/shakespeare1.txt"}}}},"taskInfo":{"name":"importer"}},"make-language-model":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-make-language-model"},"dependentTasks":["importer"],"inputs":{"artifacts":{"text_dataset":{"taskOutputArtifact":{"outputArtifactKey":"artifact","producerTask":"importer"}}}},"taskInfo":{"name":"make-language-model"}}}},"outputDefinitions":{"artifacts":{"Output":{"artifactType":{"schemaTitle":"system.Model","schemaVersion":"0.0.1"}}}}}'
   entrypoint: entrypoint
@@ -38,6 +37,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -61,13 +64,9 @@ spec:
       - --pod_uid
       - $(KFP_POD_UID)
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - launcher-v2
       env:
@@ -92,6 +91,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: task
@@ -101,6 +108,10 @@ spec:
     metadata: {}
     name: system-importer
     outputs: {}
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - container:
       args:
       - --type
@@ -139,23 +150,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -165,6 +178,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -193,6 +214,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -222,10 +247,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -233,6 +254,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -259,9 +287,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -272,6 +308,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -304,11 +343,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-c8e04e29003554b439081c46cb32438ef1f27bc6030910c9c95c7df619a4084b}}'
+            value: '{{workflow.parameters.components-4351a2bfc0420795b356dad17db637309898c44eae821502eab5e2c753a1cddb}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-make-language-model"},"dependentTasks":["importer"],"inputs":{"artifacts":{"text_dataset":{"taskOutputArtifact":{"outputArtifactKey":"artifact","producerTask":"importer"}}}},"taskInfo":{"name":"make-language-model"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-c8e04e29003554b439081c46cb32438ef1f27bc6030910c9c95c7df619a4084b}}'
+            value: '{{workflow.parameters.implementations-4351a2bfc0420795b356dad17db637309898c44eae821502eab5e2c753a1cddb}}'
           - name: task-name
             value: make-language-model
           - name: parent-dag-id
@@ -368,23 +407,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -394,6 +426,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -424,6 +464,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

@@ -10,6 +10,7 @@ spec:
         sidecar.istio.io/inject: "false"
     spec:
       securityContext:
+        runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -22,6 +23,8 @@ spec:
           capabilities:
             drop:
             - ALL
+          seccompProfile:
+            type: RuntimeDefault
         # We just need an image with the python botocore library installed
         image: docker.io/alpine/k8s:1.32.3
         command: ["python", "/hooks/sync.py"]
@@ -35,7 +38,9 @@ spec:
               name: pipeline-install-config
               key: appVersion
         - name: AWS_ENDPOINT_URL
-          value: http://seaweedfs:8111
+          value: http://seaweedfs.kubeflow:8111
+        - name: S3_ENDPOINT_URL
+          value: http://seaweedfs.kubeflow:8333 
         - name: AWS_REGION
           value: us-east-1
         - name: AWS_ACCESS_KEY_ID
@@ -60,6 +65,13 @@ spec:
               key: ARTIFACTS_PROXY_ENABLED
               name: pipeline-install-config
               optional: true
+        - name: OBJECT_STORE_HOST
+          value: seaweedfs
+        - name: ARTIFACT_RETENTION_DAYS
+          valueFrom:
+            configMapKeyRef:
+              key: ARTIFACT_RETENTION_DAYS
+              name: pipeline-install-config
         volumeMounts:
         - name: hooks
           mountPath: /hooks

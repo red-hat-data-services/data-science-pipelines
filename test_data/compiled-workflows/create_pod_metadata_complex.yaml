@@ -1,18 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: pipeline-with-pod-metadata-
 spec:
   arguments:
     parameters:
-    - name: components-c78f6e9b1302a8641c86310a2b303eb6fe40bc7225ccb38e15cd89cd412a77e1
+    - name: components-956a4df3df7821bd162b60a2f11597dd559a4e81a38785fd56b371efd87866fd
       value: '{"executorLabel":"exec-validate-no-pod-metadata","inputDefinitions":{"parameters":{"annotation_path":{"parameterType":"STRING"},"label_path":{"parameterType":"STRING"}}},"outputDefinitions":{"parameters":{"Output":{"parameterType":"BOOLEAN"}}}}'
-    - name: implementations-c78f6e9b1302a8641c86310a2b303eb6fe40bc7225ccb38e15cd89cd412a77e1
+    - name: implementations-956a4df3df7821bd162b60a2f11597dd559a4e81a38785fd56b371efd87866fd
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","validate_no_pod_metadata"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.6'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
@@ -23,16 +22,16 @@ spec:
         ValueError(\n            f\"Pod annotation is {annotation} but is supposed
         to be None.\"\n        )\n    label = os.getenv(label_path)\n    if label
         != \"\":\n        raise ValueError(\n            f\"Pod label is {label} but
-        is supposed to be None.\"\n        )\n    return True\n\n"],"image":"python:3.9"}'
+        is supposed to be None.\"\n        )\n    return True\n\n"],"image":"python:3.11"}'
     - name: kubernetes-comp-validate-pod-metadata
       value: '{"fieldPathAsEnv":[{"fieldPath":"metadata.annotations[''task-annotation'']","name":"POD_TASK_ANNOTATION"},{"fieldPath":"metadata.labels[''task-label-1'']","name":"POD_TASK_LABEL_1"},{"fieldPath":"metadata.labels[''task-label-2'']","name":"POD_TASK_LABEL_2"}],"podMetadata":{"annotations":{"task-annotation":"annotation"},"labels":{"task-label-1":"label-1","task-label-2":"label-2"}}}'
-    - name: components-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc
+    - name: components-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2
       value: '{"executorLabel":"exec-validate-pod-metadata","inputDefinitions":{"parameters":{"annotation_exp_val_1":{"isOptional":true,"parameterType":"STRING"},"annotation_exp_val_2":{"isOptional":true,"parameterType":"STRING"},"annotation_path_1":{"isOptional":true,"parameterType":"STRING"},"annotation_path_2":{"isOptional":true,"parameterType":"STRING"},"label_exp_val_1":{"isOptional":true,"parameterType":"STRING"},"label_exp_val_2":{"isOptional":true,"parameterType":"STRING"},"label_path_1":{"isOptional":true,"parameterType":"STRING"},"label_path_2":{"isOptional":true,"parameterType":"STRING"}}},"outputDefinitions":{"parameters":{"Output":{"parameterType":"BOOLEAN"}}}}'
-    - name: implementations-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc
+    - name: implementations-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","validate_pod_metadata"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
-        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.3'' ''--no-deps''
+        python3 -m pip install --quiet --no-warn-script-location ''kfp==2.14.6'' ''--no-deps''
         ''typing-extensions\u003e=3.7.4,\u003c5; python_version\u003c\"3.9\"'' \u0026\u0026
         \"$0\" \"$@\"\n","sh","-ec","program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\"
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
@@ -60,7 +59,7 @@ spec:
         ValueError(\n                f\"Pod label is {label_val_2} but is supposed
         to be {label_exp_val_2}.\"\n            )\n        validated_metadata_count+=1\n    if
         validated_metadata_count \u003c1:\n        raise RuntimeError(f\"No pod metadata
-        found to validate.\")\n    return True\n\n"],"image":"python:3.9"}'
+        found to validate.\")\n    return True\n\n"],"image":"python:3.11"}'
     - name: kubernetes-comp-validate-pod-metadata-2
       value: '{"fieldPathAsEnv":[{"fieldPath":"metadata.annotations[''task-annotation-1'']","name":"POD_TASK_ANNOTATION_1"},{"fieldPath":"metadata.annotations[''task-annotation-2'']","name":"POD_TASK_ANNOTATION_2"}],"podMetadata":{"annotations":{"task-annotation-1":"annotation-1","task-annotation-2":"annotation-2"}}}'
     - name: components-root
@@ -71,6 +70,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -111,23 +114,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -137,6 +142,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -165,6 +178,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -194,10 +211,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -205,6 +218,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -231,9 +251,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -244,6 +272,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -306,10 +337,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -317,6 +344,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -343,9 +377,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -367,6 +409,9 @@ spec:
     name: metadata-1-2-system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -423,10 +468,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -434,6 +475,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -460,9 +508,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -480,6 +536,9 @@ spec:
     name: metadata-2-0-system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -500,11 +559,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-c78f6e9b1302a8641c86310a2b303eb6fe40bc7225ccb38e15cd89cd412a77e1}}'
+            value: '{{workflow.parameters.components-956a4df3df7821bd162b60a2f11597dd559a4e81a38785fd56b371efd87866fd}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-validate-no-pod-metadata"},"inputs":{"parameters":{"annotation_path":{"runtimeValue":{"constant":"POD_TASK_ANNOTATION"}},"label_path":{"runtimeValue":{"constant":"POD_TASK_LABEL"}}}},"taskInfo":{"name":"validate-no-pod-metadata"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-c78f6e9b1302a8641c86310a2b303eb6fe40bc7225ccb38e15cd89cd412a77e1}}'
+            value: '{{workflow.parameters.implementations-956a4df3df7821bd162b60a2f11597dd559a4e81a38785fd56b371efd87866fd}}'
           - name: task-name
             value: validate-no-pod-metadata
           - name: parent-dag-id
@@ -524,11 +583,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc}}'
+            value: '{{workflow.parameters.components-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-validate-pod-metadata"},"inputs":{"parameters":{"annotation_exp_val_1":{"runtimeValue":{"constant":"annotation"}},"annotation_path_1":{"runtimeValue":{"constant":"POD_TASK_ANNOTATION"}},"label_exp_val_1":{"runtimeValue":{"constant":"label-1"}},"label_exp_val_2":{"runtimeValue":{"constant":"label-2"}},"label_path_1":{"runtimeValue":{"constant":"POD_TASK_LABEL_1"}},"label_path_2":{"runtimeValue":{"constant":"POD_TASK_LABEL_2"}}}},"taskInfo":{"name":"validate-pod-metadata"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc}}'
+            value: '{{workflow.parameters.implementations-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2}}'
           - name: task-name
             value: validate-pod-metadata
           - name: parent-dag-id
@@ -562,11 +621,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc}}'
+            value: '{{workflow.parameters.components-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-validate-pod-metadata-2"},"inputs":{"parameters":{"annotation_exp_val_1":{"runtimeValue":{"constant":"annotation-1"}},"annotation_exp_val_2":{"runtimeValue":{"constant":"annotation-2"}},"annotation_path_1":{"runtimeValue":{"constant":"POD_TASK_ANNOTATION_1"}},"annotation_path_2":{"runtimeValue":{"constant":"POD_TASK_ANNOTATION_2"}}}},"taskInfo":{"name":"validate-pod-metadata-2"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-41f6db675508ce85c4c81ffc8f4f63358027f85ec0bf31f36946cf1ede3c43cc}}'
+            value: '{{workflow.parameters.implementations-cd38bde356a74d91cad1348796c85ff9458f4566b1459197343eb989d7cb9ff2}}'
           - name: task-name
             value: validate-pod-metadata-2
           - name: parent-dag-id
@@ -635,23 +694,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -661,6 +713,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -691,6 +751,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

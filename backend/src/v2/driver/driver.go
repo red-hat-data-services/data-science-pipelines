@@ -68,21 +68,36 @@ type Options struct {
 
 	CacheDisabled bool
 
+	DriverType string
+
+	TaskName string // the original name of the task, used for input resolution
+
 	// set to true if ml pipeline server is serving over tls
 	MLPipelineTLSEnabled bool
+
+	// set to true if metadata server is serving over tls
+	MLMDTLSEnabled bool
+
+	MLPipelineServerAddress string
+
+	MLPipelineServerPort string
 
 	MLMDServerAddress string
 
 	MLMDServerPort string
 
-	// set to true if MLMD server is serving over tls
-	MLMDTLSEnabled bool
-
 	CaCertPath string
 
-	DriverType string
+	PipelineJobCreateTimeUTC string
 
-	TaskName string // the original name of the task, used for input resolution
+	PipelineJobScheduleTimeUTC string
+
+	// Admin-configured default runAsUser for user containers. Nil means not set.
+	DefaultRunAsUser *int64
+	// Admin-configured default runAsGroup for user containers. Nil means not set.
+	DefaultRunAsGroup *int64
+	// Admin-configured default runAsNonRoot for user containers. Nil means not set.
+	DefaultRunAsNonRoot *bool
 }
 
 // TaskConfig needs to stay aligned with the TaskConfig in the SDK.
@@ -231,12 +246,14 @@ func initPodSpecPatch(
 	pipelineLogLevel string,
 	publishLogs string,
 	cacheDisabled string,
+	taskConfig *TaskConfig,
 	mlPipelineTLSEnabled bool,
+	metadataTLSEnabled bool,
+	caCertPath string,
+	mlPipelineServerAddress string,
+	mlPipelineServerPort string,
 	mlmdServerAddress string,
 	mlmdServerPort string,
-	mlmdTLSEnabled bool,
-	caCertPath string,
-	taskConfig *TaskConfig,
 ) (*k8score.PodSpec, error) {
 	executorInputJSON, err := protojson.Marshal(executorInput)
 	if err != nil {
@@ -263,8 +280,18 @@ func initPodSpecPatch(
 	}
 
 	userCmdArgs := make([]string, 0, len(container.Command)+len(container.Args))
-	userCmdArgs = append(userCmdArgs, container.Command...)
-	userCmdArgs = append(userCmdArgs, container.Args...)
+
+	resolvedCommand, err := resolveContainerArgs(container.Command, executorInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve container command: %w", err)
+	}
+	userCmdArgs = append(userCmdArgs, resolvedCommand...)
+
+	resolvedArgs, err := resolveContainerArgs(container.Args, executorInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve container args: %w", err)
+	}
+	userCmdArgs = append(userCmdArgs, resolvedArgs...)
 	launcherCmd := []string{
 		component.KFPLauncherPath,
 		// TODO(Bobgy): no need to pass pipeline_name and run_id, these info can be fetched via pipeline context and pipeline run context which have been created by root DAG driver.
@@ -277,15 +304,20 @@ func initPodSpecPatch(
 		fmt.Sprintf("$(%s)", component.EnvPodName),
 		"--pod_uid",
 		fmt.Sprintf("$(%s)", component.EnvPodUID),
-		"--mlmd_server_address",
-		mlmdServerAddress,
-		"--mlmd_server_port",
-		mlmdServerPort,
+		"--ml_pipeline_server_address", mlPipelineServerAddress,
+		"--ml_pipeline_server_port", mlPipelineServerPort,
+		"--mlmd_server_address", mlmdServerAddress,
+		"--mlmd_server_port", mlmdServerPort,
 		"--publish_logs", publishLogs,
-		"--metadataTLSEnabled", fmt.Sprintf("%v", mlmdTLSEnabled),
-		"--mlPipelineServiceTLSEnabled",
-		fmt.Sprintf("%v", mlPipelineTLSEnabled),
-		"--ca_cert_path", caCertPath,
+	}
+	if mlPipelineTLSEnabled {
+		launcherCmd = append(launcherCmd, "--ml_pipeline_tls_enabled")
+	}
+	if metadataTLSEnabled {
+		launcherCmd = append(launcherCmd, "--metadata_tls_enabled")
+	}
+	if caCertPath != "" {
+		launcherCmd = append(launcherCmd, "--ca_cert_path", caCertPath)
 	}
 	if cacheDisabled == "true" {
 		launcherCmd = append(launcherCmd, "--cache_disabled")
@@ -458,7 +490,7 @@ func needsWorkspaceMount(executorInput *pipelinespec.ExecutorInput) bool {
 				return true
 			}
 
-			if strings.HasPrefix(strVal.StringValue, component.WorkspaceMountPath) {
+			if strings.Contains(strVal.StringValue, component.WorkspaceMountPath) {
 				return true
 			}
 		}
@@ -553,6 +585,22 @@ func addModelcarsToPodSpec(
 
 		image := strings.TrimPrefix(inputArtifact.Uri, "oci://")
 
+		// Apply the same security context to modelcar containers as the main
+		// container to ensure matching credentials for /proc/<pid>/root access
+		// via shareProcessNamespace. Without matching security contexts, the
+		// kernel's ptrace_may_access check can deny access to the symlinked
+		// model files.
+		allowPrivilegeEscalation := false
+		modelcarSecurityContext := &k8score.SecurityContext{
+			AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+			Capabilities: &k8score.Capabilities{
+				Drop: []k8score.Capability{"ALL"},
+			},
+			SeccompProfile: &k8score.SeccompProfile{
+				Type: k8score.SeccompProfileTypeRuntimeDefault,
+			},
+		}
+
 		podSpec.InitContainers = append(
 			podSpec.InitContainers,
 			k8score.Container{
@@ -570,6 +618,7 @@ func addModelcarsToPodSpec(
 						" exit 1)",
 				},
 				Env:                      userEnvVar,
+				SecurityContext:          modelcarSecurityContext,
 				TerminationMessagePolicy: k8score.TerminationMessageFallbackToLogsOnError,
 			},
 		)
@@ -604,6 +653,7 @@ func addModelcarsToPodSpec(
 				ImagePullPolicy: "IfNotPresent",
 				Env:             userEnvVar,
 				VolumeMounts:    []k8score.VolumeMount{emptyDirVolumeMount},
+				SecurityContext: modelcarSecurityContext,
 				Command: []string{
 					"sh",
 					"-c",

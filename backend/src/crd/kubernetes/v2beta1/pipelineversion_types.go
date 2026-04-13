@@ -45,7 +45,8 @@ type PipelineVersionSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	PlatformSpec *IRSpec `json:"platformSpec,omitempty"`
 
-	PipelineSpecURI string `json:"pipelineSpecURI,omitempty"`
+	PipelineSpecURI string            `json:"pipelineSpecURI,omitempty"`
+	Tags            map[string]string `json:"tags,omitempty"`
 }
 
 // SimplifiedCondition is a metav1.Condition without lastTransitionTime since the database model doesn't have such
@@ -94,7 +95,7 @@ type PipelineVersionList struct {
 }
 
 func FromPipelineVersionModel(pipeline model.Pipeline, pipelineVersion model.PipelineVersion) (*PipelineVersion, error) {
-	v2Spec, err := template.NewV2SpecTemplate([]byte(string(pipelineVersion.PipelineSpec)), false, nil)
+	v2Spec, err := template.NewV2SpecTemplate([]byte(string(pipelineVersion.PipelineSpec)), template.TemplateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the pipeline spec: %w", err)
 	}
@@ -159,6 +160,7 @@ func FromPipelineVersionModel(pipeline model.Pipeline, pipelineVersion model.Pip
 			PipelineName:    pipeline.Name,
 			CodeSourceURL:   pipelineVersion.CodeSourceUrl,
 			PipelineSpecURI: string(pipelineVersion.PipelineSpecURI),
+			Tags:            pipelineVersion.Tags,
 		},
 	}, nil
 }
@@ -183,7 +185,7 @@ func (p *PipelineVersion) ToModel() (*model.PipelineVersion, error) {
 	// This additional parsing filters out platform specs that normally are excluded when the pipeline version is
 	// created through the REST API. This is done rather than modifying the mutating webhook to remove these
 	// platform specs so that GitOps tools don't see a diff from what is in Git and what is on the cluster.
-	v2Spec, err := template.NewV2SpecTemplate(piplineSpecAndPlatformSpec, false, nil)
+	v2Spec, err := template.NewV2SpecTemplate(piplineSpecAndPlatformSpec, template.TemplateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse the pipeline spec: %w", err)
 	}
@@ -225,6 +227,7 @@ func (p *PipelineVersion) ToModel() (*model.PipelineVersion, error) {
 		Description:     model.LargeText(p.Spec.Description),
 		PipelineSpec:    model.LargeText(v2Spec.Bytes()),
 		PipelineSpecURI: model.LargeText(p.Spec.PipelineSpecURI),
+		Tags:            p.Spec.Tags,
 	}, nil
 }
 
