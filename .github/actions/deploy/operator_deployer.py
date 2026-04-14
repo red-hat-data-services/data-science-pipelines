@@ -113,7 +113,7 @@ class OperatorDeployer:
 
         replacements = {
             'registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:latest':
-                'gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0',
+                'registry.k8s.io/kubebuilder/kube-rbac-proxy:v0.16.0',
             'registry.redhat.io/rhel9/mariadb-105:latest':
                 'quay.io/sclorg/mariadb-105-c9s:latest',
             'registry.redhat.io/openshift-service-mesh/proxyv2-rhel9:2.6':
@@ -158,7 +158,11 @@ class OperatorDeployer:
         print(f'🏷️  Using operator image: {operator_image}')
 
         deploy_env = os.environ.copy()
-        deploy_env.update({'IMAGES_DSPO': operator_image, 'IMG': operator_image})
+        deploy_env.update({
+            'IMAGES_DSPO': operator_image,
+            'IMG': operator_image,
+            'OPERATOR_NS': self.operator_namespace,
+        })
 
         print(f'🔧 Setting IMAGES_DSPO={operator_image}')
         self.deployment_manager.run_command(
