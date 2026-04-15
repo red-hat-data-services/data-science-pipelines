@@ -1,7 +1,6 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: containerized-two-step-pipeline-
 spec:
   arguments:
@@ -24,6 +23,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -64,23 +67,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -90,6 +95,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -118,6 +131,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -147,10 +164,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -158,6 +171,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -184,9 +204,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -197,6 +225,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -305,23 +336,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -331,6 +355,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -361,6 +393,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

@@ -1,14 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: test-pipeline-
 spec:
   arguments:
     parameters:
-    - name: components-134a4a180bb4bfeacb7a318916bac3b02f8ba93e7aca4257373412cf9e37ca3b
+    - name: components-2815fa01c723249ff7034b9449ad45f7da5d129882c5d188191c2e30f2847773
       value: '{"executorLabel":"exec-add","inputDefinitions":{"parameters":{"a":{"parameterType":"NUMBER_DOUBLE"},"b":{"parameterType":"NUMBER_DOUBLE"}}},"outputDefinitions":{"parameters":{"Output":{"parameterType":"NUMBER_DOUBLE"}}}}'
-    - name: implementations-134a4a180bb4bfeacb7a318916bac3b02f8ba93e7aca4257373412cf9e37ca3b
+    - name: implementations-2815fa01c723249ff7034b9449ad45f7da5d129882c5d188191c2e30f2847773
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","add"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -18,7 +17,7 @@ spec:
         \u003e \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3
         -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
-        add(a: float, b: float) -\u003e float:\n    return a + b\n\n"],"image":"python:3.9"}'
+        add(a: float, b: float) -\u003e float:\n    return a + b\n\n"],"image":"python:3.11"}'
     - name: components-root
       value: '{"dag":{"tasks":{"add":{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-add"},"inputs":{"parameters":{"a":{"componentInputParameter":"a"},"b":{"componentInputParameter":"b"}}},"retryPolicy":{"backoffDuration":"0s","backoffFactor":2,"backoffMaxDuration":"3600s","maxRetryCount":3},"taskInfo":{"name":"add"}}}},"inputDefinitions":{"parameters":{"a":{"defaultValue":1,"isOptional":true,"parameterType":"NUMBER_DOUBLE"},"b":{"defaultValue":7,"isOptional":true,"parameterType":"NUMBER_DOUBLE"}}}}'
   entrypoint: entrypoint
@@ -27,6 +26,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -67,23 +70,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -93,6 +98,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -121,6 +134,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -166,10 +183,8 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_RETRY_INDEX
+        value: '{{retries}}'
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -177,6 +192,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -203,9 +225,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -226,6 +256,9 @@ spec:
         factor: '{{inputs.parameters.retry-backoff-factor}}'
         maxDuration: '{{inputs.parameters.retry-backoff-max-duration}}'
       limit: '{{inputs.parameters.retry-max-count}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -246,11 +279,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-134a4a180bb4bfeacb7a318916bac3b02f8ba93e7aca4257373412cf9e37ca3b}}'
+            value: '{{workflow.parameters.components-2815fa01c723249ff7034b9449ad45f7da5d129882c5d188191c2e30f2847773}}'
           - name: task
             value: '{"cachingOptions":{"enableCache":true},"componentRef":{"name":"comp-add"},"inputs":{"parameters":{"a":{"componentInputParameter":"a"},"b":{"componentInputParameter":"b"}}},"retryPolicy":{"backoffDuration":"0s","backoffFactor":2,"backoffMaxDuration":"3600s","maxRetryCount":3},"taskInfo":{"name":"add"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-134a4a180bb4bfeacb7a318916bac3b02f8ba93e7aca4257373412cf9e37ca3b}}'
+            value: '{{workflow.parameters.implementations-2815fa01c723249ff7034b9449ad45f7da5d129882c5d188191c2e30f2847773}}'
           - name: task-name
             value: add
           - name: parent-dag-id
@@ -317,23 +350,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -343,6 +369,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -373,6 +407,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

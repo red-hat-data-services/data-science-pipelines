@@ -15,8 +15,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -27,6 +29,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
@@ -48,7 +53,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	corev1 "k8s.io/api/core/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,44 +73,64 @@ var (
 	rpcPortFlag                   = flag.String("rpcPortFlag", ":8887", "RPC Port")
 	httpPortFlag                  = flag.String("httpPortFlag", ":8888", "Http Proxy Port")
 	webhookPortFlag               = flag.String("webhookPortFlag", ":8443", "Https Proxy Port")
-	webhookTLSCertPath            = flag.String("webhookTLSCertPath", "", "Path to the webhook TLS certificate.")
-	webhookTLSKeyPath             = flag.String("webhookTLSKeyPath", "", "Path to the webhook TLS private key.")
+	webhookTLSCertPath            = flag.String("webhookTLSCertPath", "", "Path to the webhook TLS certificate. Defaults to tlsCertPath value")
+	webhookTLSKeyPath             = flag.String("webhookTLSKeyPath", "", "Path to the webhook TLS private key. Defaults to tlsCertKeyPath value")
 	configPath                    = flag.String("config", "", "Path to JSON file containing config")
 	sampleConfigPath              = flag.String("sampleconfig", "", "Path to samples")
+	managedPipelinesDir           = flag.String("managedPipelinesDir", "", "Directory containing managed-pipelines.json manifest")
+	tlsCertPath                   = flag.String("tlsCertPath", "", "Path to the public TLS cert.")
+	tlsCertKeyPath                = flag.String("tlsCertKeyPath", "", "Path to the private TLS key cert.")
 	collectMetricsFlag            = flag.Bool("collectMetricsFlag", true, "Whether to collect Prometheus metrics in API server.")
 	usePipelinesKubernetesStorage = flag.Bool("pipelinesStoreKubernetes", false, "Store and run pipeline versions in Kubernetes")
 	disableWebhook                = flag.Bool("disableWebhook", false, "Set this if pipelinesStoreKubernetes is on but using a global webhook in a separate pod")
 	globalKubernetesWebhookMode   = flag.Bool("globalKubernetesWebhookMode", false, "Set this to run exclusively in Kubernetes Webhook mode")
-	tlsCertPath                   = flag.String("tlsCertPath", "", "Path to the public tls cert.")
-	tlsCertKeyPath                = flag.String("tlsCertKeyPath", "", "Path to the private tls key cert.")
 )
 
 type RegisterHttpHandlerFromEndpoint func(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
+// HTTPRouterDeps holds the HTTP handler functions needed to build the
+// top-level HTTP router. Using a struct of http.HandlerFunc values
+// allows tests to supply lightweight stubs without constructing real
+// server instances.
+type HTTPRouterDeps struct {
+	UploadPipelineV1        http.HandlerFunc
+	UploadPipelineVersionV1 http.HandlerFunc
+	UploadPipeline          http.HandlerFunc
+	UploadPipelineVersion   http.HandlerFunc
+	ReadRunLogV1            http.HandlerFunc
+	ReadArtifactV1          http.HandlerFunc
+	ReadArtifact            http.HandlerFunc
+}
+
 func initCerts() (*tls.Config, error) {
-	if *tlsCertPath == "" && *tlsCertKeyPath == "" {
+	switch {
+	case *tlsCertPath == "" && *tlsCertKeyPath == "":
 		// User can choose not to provide certs
 		return nil, nil
-	} else if *tlsCertPath == "" {
-		return nil, fmt.Errorf("Missing tlsCertPath when specifying cert paths, both tlsCertPath and tlsCertKeyPath are required.")
-	} else if *tlsCertKeyPath == "" {
-		return nil, fmt.Errorf("Missing tlsCertKeyPath when specifying cert paths, both tlsCertPath and tlsCertKeyPath are required.")
+	case *tlsCertPath == "":
+		return nil, fmt.Errorf("missing tlsCertPath when specifying cert paths, both tlsCertPath and tlsCertKeyPath are required")
+	case *tlsCertKeyPath == "":
+		return nil, fmt.Errorf("missing tlsCertKeyPath when specifying cert paths, both tlsCertPath and tlsCertKeyPath are required")
 	}
+
 	serverCert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsCertKeyPath)
 	if err != nil {
 		return nil, err
 	}
-	config := &tls.Config{
+	tlsCfg := &tls.Config{
+		ServerName:   common.GetMLPipelineServiceName() + "." + common.GetPodNamespace() + ".svc." + common.GetClusterDomain(),
 		Certificates: []tls.Certificate{serverCert},
 	}
 	glog.Info("TLS cert key/pair loaded.")
-	return config, err
+	return tlsCfg, err
 }
 
 func main() {
 	flag.Parse()
 
-	initConfig()
+	if err := initConfig(); err != nil {
+		glog.Fatalf("Failed to initialize config: %v", err)
+	}
 	// check ExecutionType Settings if presents
 	if viper.IsSet(executionTypeEnv) {
 		util.SetExecutionType(util.ExecutionType(common.GetStringConfig(executionTypeEnv)))
@@ -124,9 +149,10 @@ func main() {
 		GlobalKubernetesWebhookMode:  *globalKubernetesWebhookMode,
 		Context:                      backgroundCtx,
 		WaitGroup:                    &wg,
+		CaCertPath:                   *tlsCertPath,
 	}
 
-	tlsConfig, err := initCerts()
+	tlsCfg, err := initCerts()
 	if err != nil {
 		glog.Fatalf("Failed to parse Cert paths. Err: %v", err)
 	}
@@ -197,12 +223,16 @@ func main() {
 	resourceManager := resource.NewResourceManager(
 		clientManager,
 		&resource.ResourceManagerOptions{
-			CollectMetrics:   *collectMetricsFlag,
-			CacheDisabled:    !common.GetBoolConfigWithDefault("CacheEnabled", true),
-			DefaultWorkspace: pvcSpec,
+			CollectMetrics:       *collectMetricsFlag,
+			CacheDisabled:        !common.GetBoolConfigWithDefault("CacheEnabled", true),
+			DefaultWorkspace:     pvcSpec,
+			MLPipelineTLSEnabled: tlsCfg != nil,
+			DefaultRunAsUser:     parseOptionalInt64(common.GetDefaultSecurityContextRunAsUser()),
+			DefaultRunAsGroup:    parseOptionalInt64(common.GetDefaultSecurityContextRunAsGroup()),
+			DefaultRunAsNonRoot:  parseOptionalBool(common.GetDefaultSecurityContextRunAsNonRoot()),
 		},
 	)
-	err = config.LoadSamples(resourceManager, *sampleConfigPath)
+	err = config.LoadSamples(resourceManager, *sampleConfigPath, *managedPipelinesDir)
 	if err != nil {
 		glog.Fatalf("Failed to load samples. Err: %v", err)
 	}
@@ -216,9 +246,9 @@ func main() {
 
 	wg.Add(1)
 	go reconcileSwfCrs(resourceManager, backgroundCtx, &wg)
-	go startRpcServer(resourceManager, tlsConfig)
+	go startRPCServer(resourceManager, tlsCfg)
 	// This is blocking
-	startHttpProxy(resourceManager, tlsConfig, *usePipelinesKubernetesStorage)
+	startHTTPProxy(resourceManager, *usePipelinesKubernetesStorage, tlsCfg)
 	backgroundCancel()
 	wg.Wait()
 }
@@ -237,22 +267,75 @@ func grpcCustomMatcher(key string) (string, bool) {
 	if strings.EqualFold(key, common.GetKubeflowUserIDHeader()) {
 		return strings.ToLower(key), true
 	}
+	if strings.EqualFold(key, common.ClearTagsMetadataKey) {
+		return common.ClearTagsMetadataKey, true
+	}
 	return strings.ToLower(key), false
 }
 
-func startRpcServer(resourceManager *resource.ResourceManager, tlsConfig *tls.Config) {
+// clearTagsMiddleware inspects PUT/PATCH JSON request bodies on pipeline update
+// paths and sets the x-clear-tags header when the "tags" field is an empty map
+// ("tags":{}). This is needed because protobuf binary encoding cannot
+// distinguish an empty map from nil, so the clear-tags intent is lost during
+// the HTTP→gRPC proxy roundtrip.
+//
+// Scoped to pipeline and pipeline version update paths to avoid interfering
+// with other endpoints that may have a top-level "tags" field.
+func clearTagsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if (r.Method == http.MethodPut || r.Method == http.MethodPatch) && r.Body != nil &&
+			isPipelineUpdatePath(r.URL.Path) {
+			body, err := io.ReadAll(r.Body)
+			r.Body.Close()
+			if err == nil {
+				var raw map[string]json.RawMessage
+				if json.Unmarshal(body, &raw) == nil {
+					if tagsVal, hasTags := raw["tags"]; hasTags && string(tagsVal) == "{}" {
+						r.Header.Set(common.ClearTagsMetadataKey, "true")
+					}
+				}
+			}
+			r.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// isPipelineUpdatePath returns true if the URL path matches a pipeline or
+// pipeline version update endpoint (v2beta1 only, since v1beta1 does not
+// support tags).
+func isPipelineUpdatePath(path string) bool {
+	// v2beta1 UpdatePipeline:        PATCH /apis/v2beta1/pipelines/{pipeline_id}
+	// v2beta1 UpdatePipelineVersion: PATCH /apis/v2beta1/pipelines/{pipeline_id}/versions/{version_id}
+	return strings.HasPrefix(path, "/apis/v2beta1/pipelines/")
+}
+
+func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Config) {
 	var s *grpc.Server
-	if tlsConfig != nil {
+
+	grpc_prometheus.EnableHandlingTimeHistogram(
+		grpc_prometheus.WithHistogramBuckets([]float64{
+			0.005, 0.01, 0.03, 0.1, 0.3, 1, 3, 10, 15, 30, 60, 120, 300, // 5 ms -> 5 min
+		}),
+	)
+
+	if tlsCfg != nil {
 		glog.Info("Starting RPC server (TLS enabled)")
-		tlsCredentials := credentials.NewTLS(tlsConfig)
+		tlsCredentials := credentials.NewTLS(tlsCfg)
 		s = grpc.NewServer(
 			grpc.Creds(tlsCredentials),
-			grpc.UnaryInterceptor(apiServerInterceptor),
+			grpc.ChainUnaryInterceptor(
+				grpc_prometheus.UnaryServerInterceptor,
+				apiServerInterceptor,
+			),
 			grpc.MaxRecvMsgSize(math.MaxInt32),
 		)
 	} else {
 		glog.Info("Starting RPC server")
-		s = grpc.NewServer(grpc.UnaryInterceptor(apiServerInterceptor), grpc.MaxRecvMsgSize(math.MaxInt32))
+		s = grpc.NewServer(grpc.ChainUnaryInterceptor(
+			grpc_prometheus.UnaryServerInterceptor,
+			apiServerInterceptor,
+		), grpc.MaxRecvMsgSize(math.MaxInt32))
 	}
 
 	listener, err := net.Listen("tcp", *rpcPortFlag)
@@ -308,7 +391,7 @@ func startRpcServer(resourceManager *resource.ResourceManager, tlsConfig *tls.Co
 	glog.Info("RPC server started")
 }
 
-func startHttpProxy(resourceManager *resource.ResourceManager, tlsConfig *tls.Config, usePipelinesKubernetesStorage bool) {
+func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKubernetesStorage bool, tlsCfg *tls.Config) {
 	glog.Info("Starting Http Proxy")
 
 	ctx := context.Background()
@@ -323,65 +406,59 @@ func startHttpProxy(resourceManager *resource.ResourceManager, tlsConfig *tls.Co
 		pipelineStore = "database"
 	}
 
-	// Create gRPC HTTP MUX and register services for v1beta1 api.
 	runtimeMux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(grpcCustomMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, common.CustomMarshaler()))
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterPipelineServiceHandlerFromEndpoint, "PipelineService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterExperimentServiceHandlerFromEndpoint, "ExperimentService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterJobServiceHandlerFromEndpoint, "JobService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterRunServiceHandlerFromEndpoint, "RunService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterTaskServiceHandlerFromEndpoint, "TaskService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterReportServiceHandlerFromEndpoint, "ReportService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterVisualizationServiceHandlerFromEndpoint, "Visualization", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv1beta1.RegisterAuthServiceHandlerFromEndpoint, "AuthService", ctx, runtimeMux, tlsConfig)
+	register := func(handler RegisterHttpHandlerFromEndpoint, serviceName string) {
+		if err := registerHTTPHandlerFromEndpoint(ctx, handler, serviceName, runtimeMux, tlsCfg); err != nil {
+			glog.Fatalf("%v", err)
+		}
+	}
+	register(apiv1beta1.RegisterPipelineServiceHandlerFromEndpoint, "PipelineService")
+	register(apiv1beta1.RegisterExperimentServiceHandlerFromEndpoint, "ExperimentService")
+	register(apiv1beta1.RegisterJobServiceHandlerFromEndpoint, "JobService")
+	register(apiv1beta1.RegisterRunServiceHandlerFromEndpoint, "RunService")
+	register(apiv1beta1.RegisterTaskServiceHandlerFromEndpoint, "TaskService")
+	register(apiv1beta1.RegisterReportServiceHandlerFromEndpoint, "ReportService")
+	register(apiv1beta1.RegisterVisualizationServiceHandlerFromEndpoint, "Visualization")
+	register(apiv1beta1.RegisterAuthServiceHandlerFromEndpoint, "AuthService")
 
 	// Create gRPC HTTP MUX and register services for v2beta1 api.
-	registerHttpHandlerFromEndpoint(apiv2beta1.RegisterExperimentServiceHandlerFromEndpoint, "ExperimentService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv2beta1.RegisterPipelineServiceHandlerFromEndpoint, "PipelineService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv2beta1.RegisterRecurringRunServiceHandlerFromEndpoint, "RecurringRunService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv2beta1.RegisterRunServiceHandlerFromEndpoint, "RunService", ctx, runtimeMux, tlsConfig)
-	registerHttpHandlerFromEndpoint(apiv2beta1.RegisterArtifactServiceHandlerFromEndpoint, "ArtifactService", ctx, runtimeMux, tlsConfig)
+	register(apiv2beta1.RegisterExperimentServiceHandlerFromEndpoint, "ExperimentService")
+	register(apiv2beta1.RegisterPipelineServiceHandlerFromEndpoint, "PipelineService")
+	register(apiv2beta1.RegisterRecurringRunServiceHandlerFromEndpoint, "RecurringRunService")
+	register(apiv2beta1.RegisterRunServiceHandlerFromEndpoint, "RunService")
+	register(apiv2beta1.RegisterReportServiceHandlerFromEndpoint, "ReportService")
+	register(apiv2beta1.RegisterArtifactServiceHandlerFromEndpoint, "ArtifactService")
 
-	// Create a top level mux to include both pipeline upload server and gRPC servers.
-	topMux := mux.NewRouter()
-
-	// multipart upload is only supported in HTTP. In long term, we should have gRPC endpoints that
-	// accept pipeline url for importing.
-	// https://github.com/grpc-ecosystem/grpc-gateway/issues/410
 	sharedPipelineUploadServer := server.NewPipelineUploadServer(resourceManager, &server.PipelineUploadServerOptions{CollectMetrics: *collectMetricsFlag})
-	// API v1beta1
-	topMux.HandleFunc("/apis/v1beta1/pipelines/upload", sharedPipelineUploadServer.UploadPipelineV1)
-	topMux.HandleFunc("/apis/v1beta1/pipelines/upload_version", sharedPipelineUploadServer.UploadPipelineVersionV1)
-	topMux.HandleFunc("/apis/v1beta1/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"commit_sha":"`+common.GetStringConfigWithDefault("COMMIT_SHA", "unknown")+`", "tag_name":"`+common.GetStringConfigWithDefault("TAG_NAME", "unknown")+`", "multi_user":`+strconv.FormatBool(common.IsMultiUserMode())+`}`)
-	})
-	// API v2beta1
-	topMux.HandleFunc("/apis/v2beta1/pipelines/upload", sharedPipelineUploadServer.UploadPipeline)
-	topMux.HandleFunc("/apis/v2beta1/pipelines/upload_version", sharedPipelineUploadServer.UploadPipelineVersion)
-	topMux.HandleFunc("/apis/v2beta1/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"commit_sha":"`+common.GetStringConfigWithDefault("COMMIT_SHA", "unknown")+`", "tag_name":"`+common.GetStringConfigWithDefault("TAG_NAME", "unknown")+`", "multi_user":`+strconv.FormatBool(common.IsMultiUserMode())+`, "pipeline_store": "`+pipelineStore+`"}`)
-	})
-
-	// log streaming is provided via HTTP.
 	runLogServer := server.NewRunLogServer(resourceManager)
-	topMux.HandleFunc("/apis/v1alpha1/runs/{run_id}/nodes/{node_id}/log", runLogServer.ReadRunLogV1)
+	runArtifactServer := server.NewRunArtifactServer(resourceManager)
 
-	topMux.PathPrefix("/apis/").Handler(runtimeMux)
+	handlerDeps := HTTPRouterDeps{
+		UploadPipelineV1:        sharedPipelineUploadServer.UploadPipelineV1,
+		UploadPipelineVersionV1: sharedPipelineUploadServer.UploadPipelineVersionV1,
+		UploadPipeline:          sharedPipelineUploadServer.UploadPipeline,
+		UploadPipelineVersion:   sharedPipelineUploadServer.UploadPipelineVersion,
+		ReadRunLogV1:            runLogServer.ReadRunLogV1,
+		ReadArtifactV1:          runArtifactServer.ReadArtifactV1,
+		ReadArtifact:            runArtifactServer.ReadArtifact,
+	}
 
-	// Register a handler for Prometheus to poll.
-	topMux.Handle("/metrics", promhttp.Handler())
+	topMux := buildHTTPRouter(handlerDeps, runtimeMux, pipelineStore)
 
-	if tlsConfig != nil {
+	if tlsCfg != nil {
 		glog.Info("Starting Https Proxy")
 		https := http.Server{
-			TLSConfig: tlsConfig,
+			TLSConfig: tlsCfg,
 			Addr:      *httpPortFlag,
 			Handler:   topMux,
 		}
-		https.ListenAndServeTLS("", "")
+		err := https.ListenAndServeTLS(*tlsCertPath, *tlsCertKeyPath)
+		if err != nil {
+			glog.Errorf("Error starting https server: %v", err)
+			return
+		}
 	} else {
 		glog.Info("Starting Http Proxy")
 		http.ListenAndServe(*httpPortFlag, topMux)
@@ -390,11 +467,75 @@ func startHttpProxy(resourceManager *resource.ResourceManager, tlsConfig *tls.Co
 	glog.Info("Http Proxy started")
 }
 
+type healthzResponse struct {
+	CommitSHA     string `json:"commit_sha"`
+	TagName       string `json:"tag_name"`
+	MultiUser     bool   `json:"multi_user"`
+	PipelineStore string `json:"pipeline_store,omitempty"`
+}
+
+func writeJSONResponse(w http.ResponseWriter, payload any) {
+	responseBody, err := json.Marshal(payload)
+	if err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(responseBody); err != nil {
+		glog.Errorf("Failed to write JSON response: %v", err)
+	}
+}
+
+func newHealthzResponse(pipelineStore string) healthzResponse {
+	return healthzResponse{
+		CommitSHA:     common.GetStringConfigWithDefault("COMMIT_SHA", "unknown"),
+		TagName:       common.GetStringConfigWithDefault("TAG_NAME", "unknown"),
+		MultiUser:     common.IsMultiUserMode(),
+		PipelineStore: pipelineStore,
+	}
+}
+
+// buildHTTPRouter constructs the top-level HTTP router with all API routes
+// registered. It does not start a listener, making it testable in isolation.
+func buildHTTPRouter(handlerDeps HTTPRouterDeps, grpcGatewayHandler http.Handler, pipelineStore string) *mux.Router {
+	topMux := mux.NewRouter()
+
+	// multipart upload is only supported in HTTP. In long term, we should have gRPC endpoints that
+	// accept pipeline url for importing.
+	// https://github.com/grpc-ecosystem/grpc-gateway/issues/410
+	// API v1beta1
+	topMux.HandleFunc("/apis/v1beta1/pipelines/upload", handlerDeps.UploadPipelineV1)
+	topMux.HandleFunc("/apis/v1beta1/pipelines/upload_version", handlerDeps.UploadPipelineVersionV1)
+	topMux.HandleFunc("/apis/v1beta1/healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeJSONResponse(w, newHealthzResponse(""))
+	})
+	// API v2beta1
+	topMux.HandleFunc("/apis/v2beta1/pipelines/upload", handlerDeps.UploadPipeline)
+	topMux.HandleFunc("/apis/v2beta1/pipelines/upload_version", handlerDeps.UploadPipelineVersion)
+	topMux.HandleFunc("/apis/v2beta1/healthz", func(w http.ResponseWriter, r *http.Request) {
+		writeJSONResponse(w, newHealthzResponse(pipelineStore))
+	})
+
+	// log streaming is provided via HTTP.
+	topMux.HandleFunc("/apis/v1alpha1/runs/{run_id}/nodes/{node_id}/log", handlerDeps.ReadRunLogV1)
+
+	// Artifact reading endpoints (implemented with streaming for memory efficiency)
+	topMux.HandleFunc("/apis/v1beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", handlerDeps.ReadArtifactV1).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", handlerDeps.ReadArtifact).Methods(http.MethodGet)
+
+	topMux.PathPrefix("/apis/").Handler(clearTagsMiddleware(grpcGatewayHandler))
+
+	// Register a handler for Prometheus to poll.
+	// This must be unconditional because grpc_prometheus interceptors and Go
+	// runtime metrics are always produced regardless of collectMetricsFlag.
+	// The flag only controls the apiserver's per-handler counters.
+	topMux.Handle("/metrics", promhttp.Handler())
+
+	return topMux
+}
+
 func startWebhook(client ctrlclient.Client, clientNoCahe ctrlclient.Client, wg *sync.WaitGroup) (*http.Server, error) {
 	glog.Info("Starting the Kubernetes webhooks...")
-
-	tlsCertPath := *webhookTLSCertPath
-	tlsKeyPath := *webhookTLSKeyPath
 
 	topMux := mux.NewRouter()
 
@@ -413,48 +554,79 @@ func startWebhook(client ctrlclient.Client, clientNoCahe ctrlclient.Client, wg *
 
 	go func() {
 		defer wg.Done()
+		certPath, keyPath, useTLS, resolveErr := resolveWebhookTLSPaths(
+			*webhookTLSCertPath, *webhookTLSKeyPath,
+			*tlsCertPath, *tlsCertKeyPath,
+			common.FileExists,
+		)
+		if resolveErr != nil {
+			glog.Fatalf("Failed to resolve webhook TLS paths: %v", resolveErr)
+			return
+		}
 
-		if tlsCertPath != "" && tlsKeyPath != "" {
-			if !common.FileExists(tlsCertPath) || !common.FileExists(tlsKeyPath) {
-				glog.Fatalf("TLS certificate/key paths are set but files do not exist")
-			}
-			glog.Info("Starting the Kubernetes webhook with TLS")
-			err := webhookServer.ListenAndServeTLS(tlsCertPath, tlsKeyPath)
+		if !useTLS {
+			glog.Warning("TLS certificate/key paths are not set. Starting webhook server without TLS.")
+			err = webhookServer.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				glog.Fatalf("Failed to start the Kubernetes webhook with TLS: %v", err)
+				glog.Fatalf("Failed to start Kubernetes webhook server: %v", err)
 			}
 			return
 		}
-		glog.Warning("TLS certificate/key paths are not set. Starting webhook server without TLS.")
-		err := webhookServer.ListenAndServe()
+
+		glog.Info("Starting the Kubernetes webhook with TLS")
+		err := webhookServer.ListenAndServeTLS(certPath, keyPath)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			glog.Fatalf("Failed to start Kubernetes webhook server: %v", err)
+			glog.Fatalf("Failed to start the Kubernetes webhook with TLS: %v", err)
 		}
 	}()
 
 	return webhookServer, nil
 }
 
-func registerHttpHandlerFromEndpoint(handler RegisterHttpHandlerFromEndpoint, serviceName string, ctx context.Context, mux *runtime.ServeMux, tlsConfig *tls.Config) {
-	endpoint := "localhost" + *rpcPortFlag
-	var opts []grpc.DialOption
-	if tlsConfig != nil {
-		// local client connections via http proxy to grpc should not require tls
-		tlsConfig.InsecureSkipVerify = true
-		opts = []grpc.DialOption{
-			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+// resolveWebhookTLSPaths determines which TLS certificate and key paths to use for the
+// webhook server. It checks webhook-specific paths first, then falls back to the API server's
+// TLS paths. Returns the resolved cert/key paths, whether TLS should be used, and any error.
+// The fileExists parameter allows injecting a file-existence checker for testability.
+func resolveWebhookTLSPaths(webhookCert, webhookKey, serverCert, serverKey string, fileExists func(string) bool) (certPath, keyPath string, useTLS bool, err error) {
+	// Use webhook-specific TLS cert/key if both are specified.
+	if webhookCert != "" && webhookKey != "" {
+		if !fileExists(webhookCert) || !fileExists(webhookKey) {
+			return "", "", false, fmt.Errorf("webhook TLS certificate/key paths are set but files do not exist (cert: %q, key: %q)", webhookCert, webhookKey)
 		}
-	} else {
-		opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32))}
+		return webhookCert, webhookKey, true, nil
 	}
 
-	if err := handler(ctx, mux, endpoint, opts); err != nil {
-		glog.Fatalf("Failed to register %v handler: %v", serviceName, err)
+	// Fall back to the API server's TLS cert/key if both are specified.
+	if serverCert != "" && serverKey != "" {
+		if !fileExists(serverCert) || !fileExists(serverKey) {
+			return "", "", false, fmt.Errorf("API server TLS certificate/key paths are set but files do not exist (cert: %q, key: %q)", serverCert, serverKey)
+		}
+		return serverCert, serverKey, true, nil
 	}
+
+	// No TLS paths configured at all.
+	return "", "", false, nil
 }
 
-func initConfig() {
+func registerHTTPHandlerFromEndpoint(ctx context.Context, handler RegisterHttpHandlerFromEndpoint, serviceName string, mux *runtime.ServeMux, tlsCfg *tls.Config) error {
+	endpoint := "localhost" + *rpcPortFlag
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+	}
+	if tlsCfg != nil {
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+		}
+	}
+	if err := handler(ctx, mux, endpoint, opts); err != nil {
+		return fmt.Errorf("failed to register %v handler: %w", serviceName, err)
+	}
+	return nil
+}
+
+func initConfig() error {
 	// Import environment variable, support nested vars e.g. OBJECTSTORECONFIG_ACCESSKEY
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
@@ -465,19 +637,55 @@ func initConfig() {
 	// Set configuration file name. The format is auto detected in this case.
 	viper.SetConfigName("config")
 	viper.AddConfigPath(*configPath)
-	err := viper.ReadInConfig()
-	if err != nil {
-		glog.Fatalf("Fatal error config file: %s", err)
+	if err := viper.ReadInConfig(); err != nil {
+		return fmt.Errorf("config file error: %w", err)
 	}
 
 	// Watch for configuration change
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		// Read in config again
-		viper.ReadInConfig()
+		if err := viper.ReadInConfig(); err != nil {
+			glog.Errorf("Failed to reload config: %v", err)
+		}
 	})
 
 	proxy.InitializeConfigWithEnv()
+	return nil
+}
+
+// parseOptionalInt64 parses a string to *int64. Returns nil if the string is empty
+// or consists only of whitespace. Negative values are rejected since they are
+// invalid for Kubernetes security context fields like runAsUser/runAsGroup.
+func parseOptionalInt64(s string) *int64 {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	v, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		glog.Errorf("Failed to parse %q as int64: %v", s, err)
+		return nil
+	}
+	if v < 0 {
+		glog.Errorf("Invalid value %d: negative values are not allowed", v)
+		return nil
+	}
+	return &v
+}
+
+// parseOptionalBool parses a string to *bool. Returns nil if the string is empty
+// or consists only of whitespace. Accepts "true" and "false" (case-insensitive).
+func parseOptionalBool(s string) *bool {
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
+		return nil
+	}
+	v, err := strconv.ParseBool(trimmed)
+	if err != nil {
+		glog.Errorf("Failed to parse %q as bool: %v", s, err)
+		return nil
+	}
+	return &v
 }
 
 // getPVCSpec retrieves the default workspace PersistentVolumeClaimSpec from the config.

@@ -196,7 +196,7 @@ An example of overriding the PVC configuration:
 As a stretch goal, it'd be nice to make garbage collection of the PVC configurable. It'd default to `OnRunSuccess`. Here
 are the suggested options:
 
-- `OnRunSuccess` - when the pipeline run completes successfuly, the PVC is deleted. This maps to the Argo Workflows
+- `OnRunSuccess` - when the pipeline run completes successfully, the PVC is deleted. This maps to the Argo Workflows
   `OnWorkflowSuccess` option.
 - `OnRunCompletion` - when the pipeline run completes (success or failure), the PVC is always deleted. This maps to the
   Argo Workflow `OnWorkflowCompletion` option.
@@ -388,16 +388,14 @@ index d986a048b..866696419 100644
 +  google.protobuf.Struct pvc_spec_patch = 1;
 +}
 +
- // Spec for pipeline-level config options. See PipelineConfig DSL class.
+// Spec for pipeline-level config options. See PipelineConfig DSL class.
  message PipelineConfig {
-   // Name of the semaphore key to control pipeline concurrency
-@@ -1115,4 +1128,7 @@ message PipelineConfig {
    // Time to live configuration after the pipeline run is completed for
    // ephemeral resources created by the pipeline run.
-   int32 resource_ttl = 3;
-+
-+  // Configuration for the workspace
-+  optional WorkspaceConfig workspace = 4;
+   int32 resource_ttl = 1;
+
+   // Configuration for the workspace
+   optional WorkspaceConfig workspace = 2;
  }
 ```
 
