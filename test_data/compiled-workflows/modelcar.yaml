@@ -1,14 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  creationTimestamp: null
   generateName: pipeline-with-modelcar-model-
 spec:
   arguments:
     parameters:
-    - name: components-00fe5acf7a3f52f8f54524edb73f7d6272194b96173074dd3cdd140327308371
+    - name: components-4f60483a1bee7f772ee3001cf05964083d2f9641615161626b6146636da04fe0
       value: '{"executorLabel":"exec-build-model-car","outputDefinitions":{"artifacts":{"model":{"artifactType":{"schemaTitle":"system.Model","schemaVersion":"0.0.1"}}}}}'
-    - name: implementations-00fe5acf7a3f52f8f54524edb73f7d6272194b96173074dd3cdd140327308371
+    - name: implementations-4f60483a1bee7f772ee3001cf05964083d2f9641615161626b6146636da04fe0
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","build_model_car"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -19,10 +18,10 @@ spec:
         -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n","\nimport
         kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef
         build_model_car(model: dsl.Output[dsl.Model]):\n    # Simulate pushing the
-        Modelcar to an OCI registry\n    model.uri = \"oci://registry.domain.local/org/repo:v1.0\"\n\n"],"image":"python:3.9"}'
-    - name: components-426fe71cde5719d1162c36199e1686f1b2df4551d1fa8fa13a093333ea09a456
+        Modelcar to an OCI registry\n    model.uri = \"oci://registry.domain.local/org/repo:v1.0\"\n\n"],"image":"python:3.11"}'
+    - name: components-fc08120adea24f34a0c74fbd8e185e63caa9eca74abf250b23e4ef9c8a3d6878
       value: '{"executorLabel":"exec-get-model-files-list","inputDefinitions":{"artifacts":{"input_model":{"artifactType":{"schemaTitle":"system.Model","schemaVersion":"0.0.1"}}}},"outputDefinitions":{"parameters":{"Output":{"parameterType":"STRING"}}}}'
-    - name: implementations-426fe71cde5719d1162c36199e1686f1b2df4551d1fa8fa13a093333ea09a456
+    - name: implementations-fc08120adea24f34a0c74fbd8e185e63caa9eca74abf250b23e4ef9c8a3d6878
       value: '{"args":["--executor_input","{{$}}","--function_to_execute","get_model_files_list"],"command":["sh","-c","\nif
         ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3
         -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1
@@ -39,7 +38,7 @@ spec:
         = set(os.listdir(input_model.path))\n\n    if not filesInPath.issuperset(expected_files):\n        raise
         RuntimeError(\n            \"The model does not have expected files: \"\n            +
         \", \".join(sorted(expected_files.difference(filesInPath)))\n        )\n\n    return
-        \", \".join(sorted(filesInPath))\n\n"],"image":"python:3.9"}'
+        \", \".join(sorted(filesInPath))\n\n"],"image":"python:3.11"}'
     - name: components-comp-importer
       value: '{"executorLabel":"exec-importer","inputDefinitions":{"parameters":{"uri":{"parameterType":"STRING"}}},"outputDefinitions":{"artifacts":{"artifact":{"artifactType":{"schemaTitle":"system.Model","schemaVersion":"0.0.1"}}}}}'
     - name: implementations-comp-importer
@@ -52,6 +51,10 @@ spec:
       pipelines.kubeflow.org/v2_component: "true"
     labels:
       pipelines.kubeflow.org/v2_component: "true"
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccountName: pipeline-runner
   templates:
   - container:
@@ -92,23 +95,25 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
       env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
+      - name: KFP_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: KFP_POD_UID
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.uid
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -118,6 +123,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -146,6 +159,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
@@ -175,10 +192,6 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: metadata.uid
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       envFrom:
       - configMapRef:
           name: metadata-grpc-configmap
@@ -186,6 +199,13 @@ spec:
       image: gcr.io/ml-pipeline/should-be-overridden-during-runtime
       name: ""
       resources: {}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -212,9 +232,17 @@ spec:
       resources:
         limits:
           cpu: 500m
-          memory: 128Mi
+          memory: 256Mi
         requests:
           cpu: 100m
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       volumeMounts:
       - mountPath: /kfp-launcher
         name: kfp-launcher
@@ -225,6 +253,9 @@ spec:
     name: system-container-impl
     outputs: {}
     podSpecPatch: '{{inputs.parameters.pod-spec-patch}}'
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
     volumes:
     - emptyDir: {}
       name: kfp-launcher
@@ -261,13 +292,9 @@ spec:
       - --pod_uid
       - $(KFP_POD_UID)
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - launcher-v2
       env:
@@ -292,6 +319,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: task
@@ -301,16 +336,20 @@ spec:
     metadata: {}
     name: system-importer
     outputs: {}
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-00fe5acf7a3f52f8f54524edb73f7d6272194b96173074dd3cdd140327308371}}'
+            value: '{{workflow.parameters.components-4f60483a1bee7f772ee3001cf05964083d2f9641615161626b6146636da04fe0}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-build-model-car"},"taskInfo":{"name":"build-model-car"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-00fe5acf7a3f52f8f54524edb73f7d6272194b96173074dd3cdd140327308371}}'
+            value: '{{workflow.parameters.implementations-4f60483a1bee7f772ee3001cf05964083d2f9641615161626b6146636da04fe0}}'
           - name: task-name
             value: build-model-car
           - name: parent-dag-id
@@ -330,11 +369,11 @@ spec:
       - arguments:
           parameters:
           - name: component
-            value: '{{workflow.parameters.components-426fe71cde5719d1162c36199e1686f1b2df4551d1fa8fa13a093333ea09a456}}'
+            value: '{{workflow.parameters.components-fc08120adea24f34a0c74fbd8e185e63caa9eca74abf250b23e4ef9c8a3d6878}}'
           - name: task
             value: '{"cachingOptions":{},"componentRef":{"name":"comp-get-model-files-list"},"dependentTasks":["importer"],"inputs":{"artifacts":{"input_model":{"taskOutputArtifact":{"outputArtifactKey":"artifact","producerTask":"importer"}}}},"taskInfo":{"name":"get-model-files-list"}}'
           - name: container
-            value: '{{workflow.parameters.implementations-426fe71cde5719d1162c36199e1686f1b2df4551d1fa8fa13a093333ea09a456}}'
+            value: '{{workflow.parameters.implementations-fc08120adea24f34a0c74fbd8e185e63caa9eca74abf250b23e4ef9c8a3d6878}}'
           - name: task-name
             value: get-model-files-list
           - name: parent-dag-id
@@ -406,23 +445,16 @@ spec:
       - ""
       - --no_proxy
       - ""
-      - --mlPipelineServiceTLSEnabled
-      - "false"
+      - --ml_pipeline_server_address
+      - ml-pipeline.kubeflow.svc.cluster.local
+      - --ml_pipeline_server_port
+      - "8887"
       - --mlmd_server_address
-      - metadata-grpc-service
+      - metadata-grpc-service.kubeflow.svc.cluster.local
       - --mlmd_server_port
       - "8080"
-      - --metadataTLSEnabled
-      - "false"
-      - --ca_cert_path
-      - ""
       command:
       - driver
-      env:
-      - name: ML_PIPELINE_SERVICE_HOST
-        value: ml-pipeline.kubeflow.svc.cluster.local
-      - name: ML_PIPELINE_SERVICE_PORT_GRPC
-        value: "8887"
       image: ghcr.io/kubeflow/kfp-driver:latest
       name: ""
       resources:
@@ -432,6 +464,14 @@ spec:
         requests:
           cpu: 100m
           memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
     inputs:
       parameters:
       - name: component
@@ -462,6 +502,10 @@ spec:
         valueFrom:
           default: "true"
           path: /tmp/outputs/condition
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   - dag:
       tasks:
       - arguments:

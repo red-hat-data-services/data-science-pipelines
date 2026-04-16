@@ -94,59 +94,59 @@ class WorkspaceConfig:
 
 
 class PipelineConfig:
-    """PipelineConfig contains pipeline-level config options."""
+    """PipelineConfig contains pipeline-level config options.
 
-    def __init__(self,
-                 workspace: Optional[WorkspaceConfig] = None,
-                 semaphore_key: Optional[str] = None,
-                 mutex_name: Optional[str] = None):
+    Attributes:
+        workspace: Optional configuration for a shared workspace PVC that
+            persists for the duration of the pipeline run.
+        ttl_seconds_after_finished: Optional number of seconds to retain the
+            Argo Workflow resource after the pipeline run completes, regardless
+            of success or failure.  Maps to Argo's
+            ``ttlStrategy.secondsAfterCompletion``.  When ``None`` (the
+            default) no completion TTL is set.
+        ttl_seconds_after_success: Optional number of seconds to retain the
+            Argo Workflow resource after a *successful* run.  Maps to Argo's
+            ``ttlStrategy.secondsAfterSuccess``.  Takes precedence over
+            ``ttl_seconds_after_finished`` for successful runs when both are
+            set.
+        ttl_seconds_after_failure: Optional number of seconds to retain the
+            Argo Workflow resource after a *failed* run.  Maps to Argo's
+            ``ttlStrategy.secondsAfterFailure``.  Takes precedence over
+            ``ttl_seconds_after_finished`` for failed runs when both are set.
+        active_deadline_seconds: Optional maximum number of seconds a
+            workflow is allowed to run before it is forcibly terminated.
+            Maps to Argo's ``activeDeadlineSeconds``.  When ``None`` (the
+            default) no deadline is applied.
+    """
+
+    def __init__(
+        self,
+        workspace: Optional[WorkspaceConfig] = None,
+        ttl_seconds_after_finished: Optional[int] = None,
+        ttl_seconds_after_success: Optional[int] = None,
+        ttl_seconds_after_failure: Optional[int] = None,
+        active_deadline_seconds: Optional[int] = None,
+    ):
         self.workspace = workspace
-        self._semaphore_key = semaphore_key
-        self._mutex_name = mutex_name
-
-    @property
-    def semaphore_key(self) -> Optional[str]:
-        """Get the semaphore key for controlling pipeline concurrency.
-
-        Returns:
-            Optional[str]: The semaphore key, or None if not set.
-        """
-        return self._semaphore_key
-
-    @semaphore_key.setter
-    def semaphore_key(self, value: str):
-        """Set the semaphore key to control pipeline concurrency.
-
-        Pipelines with the same semaphore key will be limited to a configured maximum
-        number of concurrent executions. This allows you to control resource usage by
-        ensuring that only a specific number of pipelines can run simultaneously.
-
-        Note: A pipeline can use both semaphores and mutexes together. The pipeline
-        will wait until all required locks are available before starting.
-
-        Args:
-            value (str): The semaphore key name for controlling concurrent executions.
-        """
-        self._semaphore_key = (value and value.strip()) or None
-
-    @property
-    def mutex_name(self) -> Optional[str]:
-        """Get the mutex name for exclusive pipeline execution.
-
-        Returns:
-            Optional[str]: The mutex name, or None if not set.
-        """
-        return self._mutex_name
-
-    @mutex_name.setter
-    def mutex_name(self, value: str):
-        """Set the name of the mutex to ensure mutual exclusion.
-
-        Pipelines with the same mutex name will only run one at a time. This ensures
-        exclusive access to shared resources and prevents conflicts when multiple
-        pipelines would otherwise compete for the same resources.
-
-        Args:
-            value (str): Name of the mutex for exclusive pipeline execution.
-        """
-        self._mutex_name = (value and value.strip()) or None
+        for name, value in [
+            ('ttl_seconds_after_finished', ttl_seconds_after_finished),
+            ('ttl_seconds_after_success', ttl_seconds_after_success),
+            ('ttl_seconds_after_failure', ttl_seconds_after_failure),
+            ('active_deadline_seconds', active_deadline_seconds),
+        ]:
+            if value is None:
+                continue
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(
+                    f'{name} must be an int. Got: {type(value).__name__}')
+            if value < 0:
+                raise ValueError(
+                    f'{name} must be a non-negative integer. Got: {value}')
+            if value > 2147483647:
+                raise ValueError(
+                    f'{name} must not exceed the int32 maximum (2147483647).'
+                    f' Got: {value}')
+        self.ttl_seconds_after_finished = ttl_seconds_after_finished
+        self.ttl_seconds_after_success = ttl_seconds_after_success
+        self.ttl_seconds_after_failure = ttl_seconds_after_failure
+        self.active_deadline_seconds = active_deadline_seconds

@@ -28,9 +28,10 @@ TEST_MANIFESTS=".github/resources/manifests"
 PIPELINES_STORE="database"
 USE_PROXY=false
 CACHE_DISABLED=false
+ARTIFACT_PROXY_ENABLED=false
 MULTI_USER=false
-STORAGE_BACKEND="seaweedfs"
 AWF_VERSION=""
+POD_TO_POD_TLS_ENABLED=false
 
 # Loop over script arguments passed. This uses a single switch-case
 # block with default value in case we want to make alternative deployments
@@ -53,9 +54,9 @@ while [ "$#" -gt 0 ]; do
       MULTI_USER=true
       shift
       ;;
-    --storage)
-      STORAGE_BACKEND="$2"
-      shift 2
+    --artifact-proxy)
+      ARTIFACT_PROXY_ENABLED=true
+      shift
       ;;
     --argo-version)
       shift
@@ -66,6 +67,10 @@ while [ "$#" -gt 0 ]; do
         echo "ERROR: --argo-version requires an argument"
         exit 1
       fi
+      ;;
+    --tls-enabled)
+      POD_TO_POD_TLS_ENABLED=true
+      shift
       ;;
   esac
 done
@@ -80,15 +85,10 @@ if [ "${MULTI_USER}" == "true" ] && [ "${USE_PROXY}" == "true" ]; then
   exit 1
 fi
 
-if [ "${STORAGE_BACKEND}" != "minio" ] && [ "${STORAGE_BACKEND}" != "seaweedfs" ]; then
-  echo "ERROR: Storage backend must be either 'minio' or 'seaweedfs'."
-  exit 1
-fi
-
 if [ -n "${AWF_VERSION}"  ]; then
   echo "NOTE: Argo version ${AWF_VERSION} specified, updating Argo Workflow manifests..."
   echo "${AWF_VERSION}" > third_party/argo/VERSION
-  make -C ./manifests/kustomize/third-party/argo update
+  make -C ./third_party/argo update_manifests
   echo "Manifests updated for Argo version ${AWF_VERSION}."
 fi
 
@@ -100,8 +100,8 @@ if [[ $EXIT_CODE -ne 0 ]]; then
   exit $EXIT_CODE
 fi
 
-# If pipelines store is set to 'kubernetes', cert-manager must be deployed
-if [ "${PIPELINES_STORE}" == "kubernetes" ]; then
+# If pipelines store is set to 'kubernetes' or pod-to-pod TLS is set to 'true', cert-manager must be deployed
+if [ "${PIPELINES_STORE}" == "kubernetes" ] || [ "${POD_TO_POD_TLS_ENABLED}" == "true" ]; then
   #Install cert-manager
   make -C ./backend install-cert-manager || EXIT_CODE=$?
   if [[ $EXIT_CODE -ne 0 ]]
@@ -126,36 +126,21 @@ if [ "${MULTI_USER}" == "true" ]; then
   kubectl wait --for condition=established --timeout=30s crd/compositecontrollers.metacontroller.k8s.io
 
   echo "Installing Profile Controller Resources..."
-  kubectl apply -k https://github.com/kubeflow/manifests/applications/profiles/upstream/overlays/kubeflow?ref=master
-  kubectl -n kubeflow wait --for=condition=Ready pods -l kustomize.component=profiles --timeout 180s
-
-  echo "Creating KF Profile..."
-  kubectl apply -f test_data/kubernetes/seaweedfs/test-profiles.yaml
-
-  echo "Applying kubeflow-edit ClusterRole with proper aggregation..."
-  kubectl apply -f test_data/kubernetes/seaweedfs/kubeflow-edit-clusterrole.yaml
-
-  echo "Applying network policy to allow user namespace access to kubeflow services..."
-  kubectl apply -f test_data/kubernetes/seaweedfs/allow-user-namespace-access.yaml
+  kubectl apply -k https://github.com/kubeflow/manifests/applications/dashboard/upstream/profile-controller/overlays/kubeflow?ref=master
+  kubectl -n kubeflow wait --for=condition=Ready pods -l app.kubernetes.io/name=profile-controller --timeout 180s
 fi
 
 # Manifests will be deployed according to the flag provided
 if [ "${MULTI_USER}" == "false" ] && [ "${PIPELINES_STORE}" != "kubernetes" ]; then
   TEST_MANIFESTS="${TEST_MANIFESTS}/standalone"
-  if $CACHE_DISABLED; then
+  if $CACHE_DISABLED && $USE_PROXY; then
+    TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled-proxy"
+  elif $CACHE_DISABLED; then
     TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled"
   elif $USE_PROXY; then
     TEST_MANIFESTS="${TEST_MANIFESTS}/proxy"
-  elif [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/minio"
-  elif $CACHE_DISABLED && $USE_PROXY; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled-proxy"
-  elif $CACHE_DISABLED && [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled-minio"
-  elif $USE_PROXY && [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/proxy-minio"
-  elif $CACHE_DISABLED && $USE_PROXY && [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled-proxy-minio"
+  elif $POD_TO_POD_TLS_ENABLED; then
+    TEST_MANIFESTS="${TEST_MANIFESTS}/tls-enabled"
   else
     TEST_MANIFESTS="${TEST_MANIFESTS}/default"
   fi
@@ -168,20 +153,19 @@ elif [ "${MULTI_USER}" == "false" ] && [ "${PIPELINES_STORE}" == "kubernetes" ];
   fi
 elif [ "${MULTI_USER}" == "true" ]; then
   TEST_MANIFESTS="${TEST_MANIFESTS}/multiuser"
-  if [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/minio"
+  if $ARTIFACT_PROXY_ENABLED; then
+    TEST_MANIFESTS="${TEST_MANIFESTS}/artifact-proxy"
   elif $CACHE_DISABLED; then
     TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled"
-  elif $CACHE_DISABLED && [ "${STORAGE_BACKEND}" == "minio" ]; then
-    TEST_MANIFESTS="${TEST_MANIFESTS}/cache-disabled-minio"
   else
     TEST_MANIFESTS="${TEST_MANIFESTS}/default"
   fi
 fi
 
+
 echo "Deploying ${TEST_MANIFESTS}..."
 
-kubectl apply -k "${TEST_MANIFESTS}" || EXIT_CODE=$?
+kubectl kustomize --load-restrictor LoadRestrictionsNone "${TEST_MANIFESTS}" | kubectl apply -f - || EXIT_CODE=$?
 if [[ $EXIT_CODE -ne 0 ]]
 then
   echo "Deploy unsuccessful. Failure applying ${TEST_MANIFESTS}."
@@ -196,16 +180,51 @@ then
   exit 1
 fi
 
-# Verify pipeline integration for multi-user mode
 if [ "${MULTI_USER}" == "true" ]; then
-  echo "Verifying Pipeline Integration..."
+  echo "Creating KF Profile..."
+  kubectl apply -f test_data/kubernetes/seaweedfs/test-profiles.yaml
+
+  echo "Applying kubeflow-edit ClusterRole with proper aggregation..."
+  kubectl apply -f test_data/kubernetes/seaweedfs/kubeflow-edit-clusterrole.yaml
+
+  echo "Applying network policy to allow user namespace access to kubeflow services..."
+  kubectl apply -f test_data/kubernetes/seaweedfs/allow-user-namespace-access.yaml
+fi
+
+# Wait for profile controller to reconcile and verify pipeline integration
+if [ "${MULTI_USER}" == "true" ]; then
   KF_PROFILE=kubeflow-user-example-com
-  if ! kubectl get secret mlpipeline-minio-artifact -n $KF_PROFILE > /dev/null 2>&1; then
-    echo "Error: Secret mlpipeline-minio-artifact not found in namespace $KF_PROFILE"
+  echo "Waiting for profile controller to reconcile namespace ${KF_PROFILE}..."
+
+  TIMEOUT=300
+  INTERVAL=5
+  ELAPSED=0
+  while [ $ELAPSED -lt $TIMEOUT ]; do
+    if kubectl get secret mlpipeline-minio-artifact -n "$KF_PROFILE" > /dev/null 2>&1; then
+      echo "Secret mlpipeline-minio-artifact found in namespace ${KF_PROFILE} after ${ELAPSED}s"
+      break
+    fi
+    echo "Waiting for secret mlpipeline-minio-artifact in namespace ${KF_PROFILE}... (${ELAPSED}s/${TIMEOUT}s)"
+    sleep $INTERVAL
+    ELAPSED=$((ELAPSED + INTERVAL))
+  done
+
+  if ! kubectl get secret mlpipeline-minio-artifact -n "$KF_PROFILE" > /dev/null 2>&1; then
+    echo "ERROR: Secret mlpipeline-minio-artifact not found in namespace ${KF_PROFILE} after ${TIMEOUT}s"
+    echo "Checking namespace labels:"
+    kubectl get namespace "$KF_PROFILE" --show-labels 2>&1 || true
+    echo "Checking profile controller logs:"
+    kubectl -n kubeflow logs deploy/kubeflow-pipelines-profile-controller --tail=50 2>&1 || true
+    echo "Checking metacontroller logs:"
+    kubectl -n kubeflow logs -l app.kubernetes.io/name=metacontroller --tail=50 2>&1 || true
+    exit 1
   fi
-  kubectl get secret mlpipeline-minio-artifact -n "$KF_PROFILE" -o json | jq -r '.data | keys[] as $k | "\($k): \(. | .[$k] | @base64d)"' | tr '\n' ' '
+
+  echo "Verifying Pipeline Integration..."
+  echo "Secret keys present: $(kubectl get secret mlpipeline-minio-artifact -n "$KF_PROFILE" -o json | jq -r '.data | keys | join(", ")')"
 fi
 
 collect_artifacts kubeflow
 
 echo "Finished KFP deployment."
+exit 0

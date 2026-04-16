@@ -19,7 +19,6 @@ package metadata
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +30,8 @@ import (
 	"time"
 
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	"gopkg.in/yaml.v3"
+
 	"github.com/kubeflow/pipelines/backend/src/v2/objectstore"
 
 	"google.golang.org/grpc/credentials"
@@ -47,15 +48,47 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
-	"gopkg.in/yaml.v3"
 )
 
 const (
-	pipelineContextTypeName    = "system.Pipeline"
-	pipelineRunContextTypeName = "system.PipelineRun"
-	ImporterExecutionTypeName  = "system.ImporterExecution"
-	mlmdClientSideMaxRetries   = 3
+	pipelineContextTypeName            = "system.Pipeline"
+	pipelineRunContextTypeName         = "system.PipelineRun"
+	ImporterExecutionTypeName          = "system.ImporterExecution"
+	ImporterWorkspaceExecutionTypeName = "system.ImporterWorkspaceExecution"
+	// mlmdClientSideMaxRetries is the number of times the MLMD client will retry
+	// a failed gRPC call before returning an error. This is intentionally higher
+	// than a typical RPC retry budget because MySQL deadlocks (codes.Aborted) on
+	// the MLMD server are transient and require time to resolve under sustained
+	// parallel execution.
+	mlmdClientSideMaxRetries    = 10
+	mlmdClientSideBackoffBase   = 1 * time.Second
+	mlmdClientSideBackoffJitter = 0.25
+	// mlmdClientSideBackoffCap limits the maximum per-attempt wait so a single
+	// deadlock retry never stalls a pod for more than 30 s.
+	mlmdClientSideBackoffCap  = 30 * time.Second
+	defaultMaxGRPCMessageSize = 100 * 1024 * 1024 // 100MB
+	maxGRPCMessageSizeEnv     = "METADATA_GRPC_MESSAGE_SIZE"
 )
+
+// MaxGRPCMessageSize is the max gRPC message size for the metadata client.
+// The default gRPC limit is 4MB which is too small for large artifacts
+// (e.g. classification metrics with many data points).
+// Configurable via the METADATA_GRPC_MESSAGE_SIZE environment variable (in bytes).
+var MaxGRPCMessageSize = defaultMaxGRPCMessageSize
+
+func init() {
+	if v := os.Getenv(maxGRPCMessageSizeEnv); v != "" {
+		size, err := strconv.Atoi(v)
+		if err != nil {
+			glog.Fatalf("%s environment variable must be a valid integer: %v", maxGRPCMessageSizeEnv, err)
+		}
+		if size <= 0 {
+			glog.Fatalf("%s environment variable must be a positive integer, got %d", maxGRPCMessageSizeEnv, size)
+		}
+		MaxGRPCMessageSize = size
+		glog.Infof("MaxGRPCMessageSize set to %d bytes from %s", size, maxGRPCMessageSizeEnv)
+	}
+}
 
 type ExecutionType string
 
@@ -117,34 +150,31 @@ type Client struct {
 }
 
 // NewClient creates a Client given the MLMD server address and port.
-func NewClient(serverAddress, serverPort string, tlsEnabled bool, caCertPath string) (*Client, error) {
+func NewClient(serverAddress, serverPort string, tlsCfg *tls.Config) (*Client, error) {
+	// Retry on Aborted (MySQL deadlock) and Unavailable (transient connectivity).
+	// Use bounded exponential backoff so that high-concurrency deadlock storms
+	// are given enough time to resolve without stalling a pod indefinitely.
 	opts := []grpc_retry.CallOption{
 		grpc_retry.WithMax(mlmdClientSideMaxRetries),
-		grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitter(300*time.Millisecond, 0.20)),
-		grpc_retry.WithCodes(codes.Aborted),
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitterBounded(
+			mlmdClientSideBackoffBase,
+			mlmdClientSideBackoffJitter,
+			mlmdClientSideBackoffCap,
+		)),
+		grpc_retry.WithCodes(codes.Aborted, codes.Unavailable),
 	}
 
 	creds := insecure.NewCredentials()
-	if tlsEnabled {
-		if caCertPath == "" {
-			return nil, errors.New("CA cert path is empty")
-		}
-
-		caCert, err := os.ReadFile(caCertPath)
-		if err != nil {
-			return nil, util.Wrap(err, "metadata.NewClient() failed")
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		config := &tls.Config{
-			RootCAs: caCertPool,
-		}
-		creds = credentials.NewTLS(config)
+	if tlsCfg != nil {
+		creds = credentials.NewTLS(tlsCfg)
 	}
 
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", serverAddress, serverPort),
 		grpc.WithTransportCredentials(creds),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(MaxGRPCMessageSize),
+			grpc.MaxCallSendMsgSize(MaxGRPCMessageSize),
+		),
 		grpc.WithStreamInterceptor(grpc_retry.StreamClientInterceptor(opts...)),
 		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(opts...)),
 	)
@@ -1233,7 +1263,7 @@ func (c *Client) matchedArtifactOrNot(ctx context.Context, target *pb.Artifact, 
 	}
 	res, err := c.svc.GetContextsByArtifact(ctx, &pb.GetContextsByArtifactRequest{ArtifactId: candidate.Id})
 	if err != nil {
-		return false, fmt.Errorf("failed to get contextsByArtifact with artifactID=%q: %w", candidate.GetId(), err)
+		return false, fmt.Errorf("failed to get contextsByArtifact with artifactID=%d: %w", candidate.GetId(), err)
 	}
 	for _, c := range res.GetContexts() {
 		if c.GetId() == pipelineContextId {
@@ -1371,7 +1401,7 @@ func GenerateExecutionConfig(executorInput *pipelinespec.ExecutorInput) (*Execut
 		for _, artifact := range artifactList.Artifacts {
 			id, err := strconv.ParseInt(artifact.Name, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse input artifact id from %q: %w", id, err)
+				return nil, fmt.Errorf("unable to parse input artifact id from %q: %w", artifact.Name, err)
 			}
 			ecfg.InputArtifactIDs[name] = append(ecfg.InputArtifactIDs[name], id)
 		}

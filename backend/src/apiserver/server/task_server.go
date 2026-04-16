@@ -54,7 +54,7 @@ func (s *TaskServer) CreateTaskV1(ctx context.Context, request *api.CreateTaskRe
 
 func (s *TaskServer) validateCreateTaskRequest(request *api.CreateTaskRequest) error {
 	if request == nil {
-		return util.NewInvalidInputError("CreatTaskRequest is nil")
+		return util.NewInvalidInputError("CreateTaskRequest is nil")
 	}
 	task := request.GetTask()
 
@@ -77,7 +77,7 @@ func (s *TaskServer) validateCreateTaskRequest(request *api.CreateTaskRequest) e
 		}
 	}
 	if task.GetRunId() == "" {
-		return errMustSpecify("RunId")
+		return errMustSpecify("RunID")
 	}
 	if task.GetMlmdExecutionID() == "" {
 		return errMustSpecify("MlmdExecutionID")
