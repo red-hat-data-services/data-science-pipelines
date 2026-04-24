@@ -134,6 +134,7 @@ jobs:
         if: ${{ steps.create-cluster.outcome == 'success' }}
         id: deploy
         with:
+          proxy: ${{ matrix.proxy }}
           cache_enabled: ${{ matrix.cache_enabled }}
           argo_version: ${{ matrix.argo_version }}
           storage_backend: ${{ matrix.storage }}
@@ -194,6 +195,7 @@ jobs:
         id: test-run
         if: ${{ steps.configure.outcome == 'success' }}
         with:
+          proxy: ${{ matrix.proxy }}
           cache_enabled: ${{ matrix.cache_enabled }}
           test_directory: ${{ env.E2E_TESTS_DIR }}
           test_label: ${{ steps.configure.outputs.TEST_LABEL }}
@@ -205,6 +207,7 @@ jobs:
           ca_cert_path: ${{ env.CA_CERT_PATH }}
           deployment_name: ${{ steps.deploy.outputs.deployment_name }}
           deployment_service_account_name: ${{ steps.deploy.outputs.service_account_name }}
+          pipeline_runner_service_account_name: ${{ steps.deploy.outputs.pipeline_runner_service_account }}
           deployment_mode: ${{ steps.deploy.outputs.deployment_mode }}
 
   end-to-end-critical-scenario-multi-user-tests:
@@ -302,4 +305,5 @@ jobs:
           report_name: "E2EMultiUserTests_K8s=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_multiUser=${{ matrix.multi_user }}_artifactProxy=${{ matrix.artifact_proxy }}"
           deployment_name: ${{ steps.deploy.outputs.deployment_name }}
           deployment_service_account_name: ${{ steps.deploy.outputs.service_account_name }}
+          pipeline_runner_service_account_name: ${{ steps.deploy.outputs.pipeline_runner_service_account }}
           deployment_mode: ${{ steps.deploy.outputs.deployment_mode }}
