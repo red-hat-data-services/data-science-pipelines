@@ -17,6 +17,8 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      # Init container template: keep securityContext, resources, and script
+      # in sync across all wait-for-* containers in this repo.
       initContainers:
       - name: wait-for-database
         image: docker.io/alpine:3.23
@@ -135,4 +137,3 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 2
       serviceAccountName: metadata-grpc-server
-
