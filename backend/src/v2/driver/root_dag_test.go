@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_validateRootDAG(t *testing.T) {
@@ -211,7 +212,7 @@ func TestRootDAG_CreateExecutionAlreadyExistsReturnsExistingID(t *testing.T) {
 		GetExecutionByTypeAndNameFunc: func(ctx context.Context, typeName, name string) (*metadata.Execution, error) {
 			return &metadata.Execution{
 				Execution: &pb.Execution{
-					Id: new(int64(1234)),
+					Id: proto.Int64(1234),
 				},
 			}, nil
 		},

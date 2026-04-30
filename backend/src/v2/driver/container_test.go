@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func Test_validateContainer(t *testing.T) {
@@ -218,7 +219,7 @@ func TestContainer_CreateExecutionGeneralFailure(t *testing.T) {
 			return &pb.GetParentContextsByContextResponse{}, nil
 		},
 		GetContextByTypeAndNameFunc: func(ctx context.Context, in *pb.GetContextByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetContextByTypeAndNameResponse, error) {
-			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: new(int64(1234))}}, nil
+			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: proto.Int64(1234)}}, nil
 		},
 		GetExecutionsByIDFunc: func(ctx context.Context, in *pb.GetExecutionsByIDRequest, opts ...grpc.CallOption) (*pb.GetExecutionsByIDResponse, error) {
 			return &pb.GetExecutionsByIDResponse{Executions: []*pb.Execution{{Id: func() *int64 { i := int64(55); return &i }()}}}, nil
@@ -269,7 +270,7 @@ func TestContainer_CreateExecutionSuccess(t *testing.T) {
 			return &pb.GetParentContextsByContextResponse{}, nil
 		},
 		GetContextByTypeAndNameFunc: func(ctx context.Context, in *pb.GetContextByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetContextByTypeAndNameResponse, error) {
-			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: new(int64(1234))}}, nil
+			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: proto.Int64(1234)}}, nil
 		},
 		GetExecutionsByIDFunc: func(ctx context.Context, in *pb.GetExecutionsByIDRequest, opts ...grpc.CallOption) (*pb.GetExecutionsByIDResponse, error) {
 			return &pb.GetExecutionsByIDResponse{Executions: []*pb.Execution{{Id: func() *int64 { i := int64(55); return &i }()}}}, nil
@@ -280,7 +281,7 @@ func TestContainer_CreateExecutionSuccess(t *testing.T) {
 		GetExecutionByTypeAndNameFunc: func(ctx context.Context, in *pb.GetExecutionByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetExecutionByTypeAndNameResponse, error) {
 			return &pb.GetExecutionByTypeAndNameResponse{
 				Execution: &pb.Execution{
-					Id: new(int64(1234)),
+					Id: proto.Int64(1234),
 				},
 			}, nil
 		},
@@ -328,7 +329,7 @@ func TestContainer_CreateExecutionAlreadyExistsLookupReturnsNil(t *testing.T) {
 			return &pb.GetParentContextsByContextResponse{}, nil
 		},
 		GetContextByTypeAndNameFunc: func(ctx context.Context, in *pb.GetContextByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetContextByTypeAndNameResponse, error) {
-			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: new(int64(1234))}}, nil
+			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: proto.Int64(1234)}}, nil
 		},
 		GetExecutionsByIDFunc: func(ctx context.Context, in *pb.GetExecutionsByIDRequest, opts ...grpc.CallOption) (*pb.GetExecutionsByIDResponse, error) {
 			return &pb.GetExecutionsByIDResponse{Executions: []*pb.Execution{{Id: func() *int64 { i := int64(55); return &i }()}}}, nil
@@ -382,7 +383,7 @@ func TestContainer_CreateExecutionDoesNotExistGenericError(t *testing.T) {
 			return &pb.GetParentContextsByContextResponse{}, nil
 		},
 		GetContextByTypeAndNameFunc: func(ctx context.Context, in *pb.GetContextByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetContextByTypeAndNameResponse, error) {
-			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: new(int64(1234))}}, nil
+			return &pb.GetContextByTypeAndNameResponse{Context: &pb.Context{Id: proto.Int64(1234)}}, nil
 		},
 		GetExecutionsByIDFunc: func(ctx context.Context, in *pb.GetExecutionsByIDRequest, opts ...grpc.CallOption) (*pb.GetExecutionsByIDResponse, error) {
 			return &pb.GetExecutionsByIDResponse{Executions: []*pb.Execution{{Id: func() *int64 { i := int64(55); return &i }()}}}, nil
@@ -397,7 +398,7 @@ func TestContainer_CreateExecutionDoesNotExistGenericError(t *testing.T) {
 		GetExecutionByTypeAndNameFunc: func(ctx context.Context, in *pb.GetExecutionByTypeAndNameRequest, opts ...grpc.CallOption) (*pb.GetExecutionByTypeAndNameResponse, error) {
 			return &pb.GetExecutionByTypeAndNameResponse{
 				Execution: &pb.Execution{
-					Id: new(int64(999)),
+					Id: proto.Int64(999),
 				},
 			}, nil
 		},

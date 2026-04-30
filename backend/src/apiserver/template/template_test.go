@@ -238,7 +238,7 @@ func TestScheduledWorkflow(t *testing.T) {
 		},
 	}
 
-	actualScheduledWorkflow, err := v2Template.ScheduledWorkflow(modelJob)
+	actualScheduledWorkflow, err := v2Template.ScheduledWorkflow(modelJob, nil)
 	assert.Nil(t, err)
 
 	// We don't compare this field because it changes with every driver/launcher image release.
@@ -973,7 +973,7 @@ func TestNewGenericScheduledWorkflow(t *testing.T) {
 			},
 		},
 	}
-	swf, err := NewGenericScheduledWorkflow(modelJob)
+	swf, err := NewGenericScheduledWorkflow(modelJob, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, "kubeflow.org/v2beta1", swf.APIVersion)
 	assert.Equal(t, "ScheduledWorkflow", swf.Kind)
