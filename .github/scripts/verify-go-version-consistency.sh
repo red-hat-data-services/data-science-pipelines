@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+if ! command -v skopeo &>/dev/null; then
+    echo "ERROR: skopeo is required but not found in PATH" >&2
+    exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 GOMOD_VERSION=$(grep -E '^go [0-9]' "$REPO_ROOT/go.mod" | awk '{print $2}' || true)
@@ -26,18 +31,27 @@ if [[ -f "$IGNORE_FILE" ]]; then
     done < "$IGNORE_FILE"
 fi
 
-version_matches() {
-    local docker_version="$1" gomod_version="$2"
-    local docker_major_minor gomod_major_minor
-    docker_major_minor=$(echo "$docker_version" | cut -d. -f1-2)
-    gomod_major_minor=$(echo "$gomod_version" | cut -d. -f1-2)
-    if [[ "$docker_major_minor" != "$gomod_major_minor" ]]; then
-        return 1
+resolve_go_version() {
+    local image_ref="$1" tag_version="$2"
+    if [[ "$tag_version" == *.*.* ]]; then
+        echo "$tag_version"
+        return
     fi
-    if [[ "$docker_version" == *.*.* && "$gomod_version" == *.*.* ]]; then
-        [[ "$docker_version" != "$gomod_version" ]] && return 1
+    local resolved skopeo_stderr
+    skopeo_stderr=$(mktemp)
+    resolved=$(skopeo inspect --override-arch amd64 --override-os linux "docker://$image_ref" 2>"$skopeo_stderr" \
+        | grep -oE '"(VERSION|GOLANG_VERSION)=[0-9]+\.[0-9]+\.[0-9]+"' \
+        | head -1 \
+        | sed -E 's/"(VERSION|GOLANG_VERSION)=([0-9]+\.[0-9]+\.[0-9]+)"/\2/')
+    if [[ -z "$resolved" ]]; then
+        echo "  skopeo inspect failed for $image_ref:" >&2
+        cat "$skopeo_stderr" >&2
+        rm -f "$skopeo_stderr"
+        echo ""
+        return
     fi
-    return 0
+    rm -f "$skopeo_stderr"
+    echo "$resolved"
 }
 
 ERRORS=0
@@ -67,13 +81,27 @@ while IFS= read -r dockerfile; do
             continue
         fi
 
+        image_ref=$(echo "$line" | sed -E 's/^FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*([^[:space:]]+)[[:space:]]*.*/\2/')
+
+        resolved_version=$(resolve_go_version "$image_ref" "$docker_version")
+
+        if [[ -z "$resolved_version" ]]; then
+            echo "ERROR: Could not resolve Go version from image $image_ref in $relative" >&2
+            ERRORS=$((ERRORS + 1))
+            continue
+        fi
+
         CHECKED=$((CHECKED + 1))
 
-        if ! version_matches "$docker_version" "$GOMOD_VERSION"; then
-            echo "MISMATCH: $relative has Go $docker_version, but go.mod requires $GOMOD_VERSION" >&2
+        if [[ "$resolved_version" != "$docker_version" ]]; then
+            echo "  INFO: $relative tag $docker_version resolved to Go $resolved_version"
+        fi
+
+        if [[ "$resolved_version" != "$GOMOD_VERSION" ]]; then
+            echo "MISMATCH: $relative has Go $resolved_version, but go.mod requires $GOMOD_VERSION" >&2
             ERRORS=$((ERRORS + 1))
         else
-            echo "  OK: $relative (Go $docker_version)"
+            echo "  OK: $relative (Go $resolved_version)"
         fi
     done < <(grep -iE '^FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):' "$dockerfile" || true)
 done < <(cd "$REPO_ROOT" && (git ls-files -z '*Dockerfile*' | xargs -0 grep -liE -- 'FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):' | sed "s|^|$REPO_ROOT/|") || true)
