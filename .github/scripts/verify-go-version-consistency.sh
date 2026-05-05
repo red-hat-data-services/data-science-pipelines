@@ -37,9 +37,12 @@ resolve_go_version() {
         echo "$tag_version"
         return
     fi
-    local resolved skopeo_stderr
+    local resolved skopeo_stderr skopeo_ref="$image_ref"
+    if [[ "$skopeo_ref" == *:*@* ]]; then
+        skopeo_ref="${skopeo_ref%%:*}@${skopeo_ref#*@}"
+    fi
     skopeo_stderr=$(mktemp)
-    resolved=$(skopeo inspect --override-arch amd64 --override-os linux "docker://$image_ref" 2>"$skopeo_stderr" \
+    resolved=$(skopeo inspect --override-arch amd64 --override-os linux "docker://$skopeo_ref" 2>"$skopeo_stderr" \
         | grep -oE '"(VERSION|GOLANG_VERSION)=[0-9]+\.[0-9]+\.[0-9]+"' \
         | head -1 \
         | sed -E 's/"(VERSION|GOLANG_VERSION)=([0-9]+\.[0-9]+\.[0-9]+)"/\2/')
