@@ -41,3 +41,5 @@ ENV MAX_NUM_VIEWERS "50"
 ENV NAMESPACE "kubeflow"
 
 CMD ["/bin/controller", "-logtostderr=true", "-max_num_viewers=${MAX_NUM_VIEWERS}", "--namespace=${NAMESPACE}"]
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

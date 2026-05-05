@@ -54,3 +54,5 @@ ENV LOG_LEVEL=info
 ENV EXECUTIONTYPE=Workflow
 
 CMD ["/bin/sh", "-c", "persistence_agent --logtostderr=true --namespace=${NAMESPACE} --ttlSecondsAfterWorkflowFinish=${TTL_SECONDS_AFTER_WORKFLOW_FINISH} --numWorker ${NUM_WORKERS} --executionType ${EXECUTIONTYPE} --logLevel=${LOG_LEVEL}"]
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

@@ -52,3 +52,5 @@ ENTRYPOINT ["/bin/launcher-v2"]
 
 LABEL name="ds-pipelines-launcher" \
       summary="DSP launcher"
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

@@ -55,3 +55,5 @@ ENV NAMESPACE=""
 ENV LOG_LEVEL=info
 
 CMD /bin/controller --logtostderr=true --namespace=${NAMESPACE} --logLevel=${LOG_LEVEL}
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

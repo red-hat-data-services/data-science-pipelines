@@ -53,3 +53,5 @@ LABEL com.redhat.component="odh-ml-pipelines-launcher-container" \
       io.k8s.display-name="odh-ml-pipelines-launcher" \
       io.k8s.description="odh-ml-pipelines-launcher" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.
