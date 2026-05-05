@@ -33,21 +33,26 @@ fi
 
 resolve_go_version() {
     local image_ref="$1" tag_version="$2"
+    # X.Y.Z tags are trusted without inspection — the patch version is explicit
     if [[ "$tag_version" == *.*.* ]]; then
         echo "$tag_version"
         return
     fi
-    local resolved skopeo_stderr skopeo_ref="$image_ref"
+    local resolved skopeo_stderr skopeo_ref="$image_ref" attempt
     if [[ "$skopeo_ref" == *:*@* ]]; then
         skopeo_ref="${skopeo_ref%%:*}@${skopeo_ref#*@}"
     fi
     skopeo_stderr=$(mktemp)
-    resolved=$(skopeo inspect --override-arch amd64 --override-os linux "docker://$skopeo_ref" 2>"$skopeo_stderr" \
-        | grep -oE '"(VERSION|GOLANG_VERSION)=[0-9]+\.[0-9]+\.[0-9]+"' \
-        | head -1 \
-        | sed -E 's/"(VERSION|GOLANG_VERSION)=([0-9]+\.[0-9]+\.[0-9]+)"/\2/')
+    for attempt in 1 2 3; do
+        resolved=$(skopeo inspect --override-arch amd64 --override-os linux "docker://$skopeo_ref" 2>"$skopeo_stderr" \
+            | grep -oE '"(VERSION|GOLANG_VERSION)=[0-9]+\.[0-9]+\.[0-9]+"' \
+            | head -1 \
+            | sed -E 's/"(VERSION|GOLANG_VERSION)=([0-9]+\.[0-9]+\.[0-9]+)"/\2/')
+        [[ -n "$resolved" ]] && break
+        [[ $attempt -lt 3 ]] && sleep 2
+    done
     if [[ -z "$resolved" ]]; then
-        echo "  skopeo inspect failed for $image_ref:" >&2
+        echo "  skopeo inspect failed for $image_ref after $attempt attempts:" >&2
         cat "$skopeo_stderr" >&2
         rm -f "$skopeo_stderr"
         echo ""
@@ -76,7 +81,7 @@ while IFS= read -r dockerfile; do
     [[ "$skip" == true ]] && continue
     FOUND=$((FOUND + 1))
     while IFS= read -r line; do
-        docker_version=$(echo "$line" | sed -E 's/.*FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):([0-9]+\.[0-9]+(\.[0-9]+)?).*/\3/')
+        docker_version=$(echo "$line" | sed -E 's/.*[Ff][Rr][Oo][Mm][[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):([0-9]+\.[0-9]+(\.[0-9]+)?).*/\3/')
 
         if [[ ! "$docker_version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
             echo "ERROR: Could not parse Go version from line in $relative: $line" >&2
@@ -84,7 +89,7 @@ while IFS= read -r dockerfile; do
             continue
         fi
 
-        image_ref=$(echo "$line" | sed -E 's/^FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*([^[:space:]]+)[[:space:]]*.*/\2/')
+        image_ref=$(echo "$line" | sed -E 's/^[Ff][Rr][Oo][Mm][[:space:]]+(--[^[:space:]]+[[:space:]]+)*([^[:space:]]+)[[:space:]]*.*/\2/')
 
         resolved_version=$(resolve_go_version "$image_ref" "$docker_version")
 
