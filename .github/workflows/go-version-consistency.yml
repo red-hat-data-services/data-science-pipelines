@@ -6,6 +6,7 @@ on:
       - '**/go.mod'
       - '**/Dockerfile*'
       - '.github/scripts/verify-go-version-consistency.sh'
+      - '.github/scripts/go-version-consistency-ignore'
       - '.github/workflows/go-version-consistency.yml'
 
 jobs:
