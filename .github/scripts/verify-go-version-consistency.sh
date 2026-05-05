@@ -20,7 +20,8 @@ IGNORED_PATHS=()
 if [[ -f "$IGNORE_FILE" ]]; then
     while IFS= read -r line; do
         line="${line%%#*}"
-        line=$(echo "$line" | xargs)
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
         [[ -n "$line" ]] && IGNORED_PATHS+=("$line")
     done < "$IGNORE_FILE"
 fi
@@ -41,10 +42,12 @@ version_matches() {
 
 ERRORS=0
 CHECKED=0
+TOTAL_FOUND=0
 FOUND=0
 
 while IFS= read -r dockerfile; do
     relative="${dockerfile#"$REPO_ROOT"/}"
+    TOTAL_FOUND=$((TOTAL_FOUND + 1))
     skip=false
     for ignored in "${IGNORED_PATHS[@]}"; do
         if [[ "$relative" == "$ignored" ]]; then
@@ -73,13 +76,18 @@ while IFS= read -r dockerfile; do
             echo "  OK: $relative (Go $docker_version)"
         fi
     done < <(grep -iE '^FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):' "$dockerfile" || true)
-done < <(cd "$REPO_ROOT" && (git ls-files '*Dockerfile*' | xargs grep -liE 'FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):' | sed "s|^|$REPO_ROOT/|") || true)
+done < <(cd "$REPO_ROOT" && (git ls-files -z '*Dockerfile*' | xargs -0 grep -liE -- 'FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):' | sed "s|^|$REPO_ROOT/|") || true)
 
 echo ""
 
-if [[ $FOUND -eq 0 ]]; then
+if [[ $TOTAL_FOUND -eq 0 ]]; then
     echo "ERROR: No Dockerfiles with Go base images found." >&2
     exit 1
+fi
+
+if [[ $FOUND -eq 0 ]]; then
+    echo "INFO: All $TOTAL_FOUND Dockerfile(s) with Go base images are ignored. Nothing to check."
+    exit 0
 fi
 
 if [[ $CHECKED -eq 0 ]]; then
