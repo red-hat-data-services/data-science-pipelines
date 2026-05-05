@@ -15,6 +15,16 @@ fi
 
 echo "go.mod Go version: $GOMOD_VERSION"
 
+IGNORE_FILE="$REPO_ROOT/.github/scripts/go-version-consistency-ignore"
+IGNORED_PATHS=()
+if [[ -f "$IGNORE_FILE" ]]; then
+    while IFS= read -r line; do
+        line="${line%%#*}"
+        line=$(echo "$line" | xargs)
+        [[ -n "$line" ]] && IGNORED_PATHS+=("$line")
+    done < "$IGNORE_FILE"
+fi
+
 version_matches() {
     local docker_version="$1" gomod_version="$2"
     local docker_major_minor gomod_major_minor
@@ -35,6 +45,15 @@ FOUND=0
 
 while IFS= read -r dockerfile; do
     relative="${dockerfile#"$REPO_ROOT"/}"
+    skip=false
+    for ignored in "${IGNORED_PATHS[@]}"; do
+        if [[ "$relative" == "$ignored" ]]; then
+            echo "  SKIP: $relative (ignored)"
+            skip=true
+            break
+        fi
+    done
+    [[ "$skip" == true ]] && continue
     FOUND=$((FOUND + 1))
     while IFS= read -r line; do
         docker_version=$(echo "$line" | sed -E 's/.*FROM[[:space:]]+(--[^[:space:]]+[[:space:]]+)*(golang|[^[:space:]]*go-toolset):([0-9]+\.[0-9]+(\.[0-9]+)?).*/\3/')
