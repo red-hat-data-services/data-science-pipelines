@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-05-01
+- Last updated: 2026-05-06
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
@@ -243,7 +243,7 @@ ginkgo -v --label-filter="Smoke" ./backend/test/v2/api
 ginkgo -v ./backend/test/end2end -- -namespace=kubeflow -isDebugMode=true
 ```
 
-Without `--label-filter`, `gpu`-labeled E2E tests run as well (they request accelerators) and may pend or fail on CPU-only clusters; pass `--label-filter` to limit what runs (for example `Smoke`, or `gpu` on GPU-capable clusters). NVIDIA vs AMD fixtures: set `KFP_E2E_GPU_VENDOR` to `nvidia` (default if unset), `amd`, or `both` so only matching IRs run (`pytorch_nvidia_gpu_availability.yaml` / `pytorch_amd_gpu_availability.yaml`).
+Without `--label-filter`, `gpu`-labeled E2E tests run as well (they request accelerators) and may pend or fail on CPU-only clusters; pass `--label-filter` to limit what runs (for example `Smoke`, or `gpu` on GPU-capable clusters). NVIDIA vs AMD fixtures: set `KFP_E2E_GPU_VENDOR` to `nvidia` (default if unset), `amd`, or `both` so only matching IRs run (`pytorch_nvidia_gpu_availability.yaml` / `pytorch_amd_gpu_availability.yaml`). Any value other than `amd`/`both`/`all` falls back to `nvidia`.
 
 Test data is centralized under:
 
