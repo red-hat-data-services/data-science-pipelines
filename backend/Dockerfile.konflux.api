@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Use ubi9/go-toolset as base image
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:b282d5a2abe049e78053c5c629c321c75d0e0faa181edcfb24aa6699b2429868 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:05be570f6d59b45a5b486c3fed4c2d28d0f4d2c12e0f71b932e27db22c6b3627 as builder
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
