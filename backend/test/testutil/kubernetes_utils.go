@@ -77,18 +77,16 @@ func ReadPodLogs(client *kubernetes.Clientset, namespace string, podName string,
 			podLogs, err := podLogsRequest.Stream(context.Background()) // Pass a context for cancellation
 			if err != nil {
 				logger.Log("Failed to stream pod logs due to %v", err)
-				continue
 			}
-			if podLogs == nil {
-				logger.Log("Pod log stream for container %s returned nil reader", container.Name)
-				continue
-			}
-			_, copyErr := io.Copy(buf, podLogs)
-			if closeErr := podLogs.Close(); closeErr != nil {
-				logger.Log("Failed to close pod log reader due to %v", closeErr)
-			}
-			if copyErr != nil {
-				logger.Log("Failed to add pod logs to buffer due to: %v", copyErr)
+			defer func(podLogs io.ReadCloser) {
+				err = podLogs.Close()
+				if err != nil {
+					logger.Log("Failed to close pod log reader due to %v", err)
+				}
+			}(podLogs)
+			_, err = io.Copy(buf, podLogs)
+			if err != nil {
+				logger.Log("Failed to add pod logs to buffer due to: %v", err)
 			}
 		}
 	} else {
