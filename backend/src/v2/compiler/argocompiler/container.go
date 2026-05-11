@@ -535,10 +535,7 @@ func (c *workflowCompiler) addContainerExecutorTemplate(task *pipelinespec.Pipel
 			Env:     append(commonEnvs, MLPipelineServiceEnv...),
 		},
 	}
-	// If the apiserver is TLS-enabled, add the custom CA bundle to the executor.
-	if common.GetCaBundleSecretName() != "" && (c.mlPipelineTLSEnabled || common.GetMetadataTLSEnabled()) {
-		ConfigureCustomCABundle(executor)
-	}
+	ConfigureCABundle(executor)
 	// If retry policy is set, add retryStrategy to executor
 	if taskRetrySpec != nil {
 		executor.RetryStrategy = c.getTaskRetryStrategyFromInput(inputParameter(paramRetryMaxCount),

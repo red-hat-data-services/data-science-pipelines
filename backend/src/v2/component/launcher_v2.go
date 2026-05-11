@@ -497,27 +497,14 @@ func execute(
 	k8sClient kubernetes.Interface,
 	publishLogs string,
 ) (*pipelinespec.ExecutorOutput, error) {
-	// If a custom CA path is input, append to system CA and save to a temp file for executor access.
-	if customCAPath != "" {
-		var caBundleTmpPath string
-		var err error
-		if caBundleTmpPath, err = compileTempCABundleWithCustomCA(customCAPath); err != nil {
-			return nil, err
-		}
-
-		err = os.Setenv("REQUESTS_CA_BUNDLE", caBundleTmpPath)
-		if err != nil {
+	// Ensure request/SDK libraries see the same CA file before any artifact I/O.
+	if sslCertFilePath := os.Getenv("SSL_CERT_FILE"); sslCertFilePath != "" {
+		if err := os.Setenv("REQUESTS_CA_BUNDLE", sslCertFilePath); err != nil {
 			glog.Errorf("Error setting REQUESTS_CA_BUNDLE environment variable, %s", err.Error())
 		}
-		err = os.Setenv("AWS_CA_BUNDLE", caBundleTmpPath)
-		if err != nil {
+		if err := os.Setenv("AWS_CA_BUNDLE", sslCertFilePath); err != nil {
 			glog.Errorf("Error setting AWS_CA_BUNDLE environment variable, %s", err.Error())
 		}
-		err = os.Setenv("SSL_CERT_FILE", caBundleTmpPath)
-		if err != nil {
-			glog.Errorf("Error setting SSL_CERT_FILE environment variable, %s", err.Error())
-		}
-
 	}
 	if err := downloadArtifacts(ctx, executorInput, bucket, bucketConfig, namespace, k8sClient); err != nil {
 		return nil, err
