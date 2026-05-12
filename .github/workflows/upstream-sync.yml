@@ -191,6 +191,7 @@ jobs:
           fi
 
           gh pr create \
+            --repo "${{ github.repository }}" \
             --head "${{ steps.merge.outputs.branch }}" \
             --base "${{ env.DOWNSTREAM_BRANCH }}" \
             --title "$PR_TITLE" \
