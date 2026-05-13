@@ -140,6 +140,28 @@ jobs:
           python_version: ${{ env.PYTHON_VERSION }}
           report_name: "${{ matrix.test_label}}Tests_K8s=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_argoVersion=${{ matrix.argo_version}}_proxy=${{ matrix.proxy }}_storage=${{ matrix.storage }}"
 
+      - name: Dump impl pod diagnostics on failure
+        if: ${{ always() && steps.test-run.outcome == 'failure' }}
+        shell: bash
+        run: |
+          NS="${{ steps.configure.outputs.NAMESPACE }}"
+          echo "::group::Kubernetes diagnostics for failed e2e run"
+          echo "Namespace: ${NS}"
+          kubectl -n "${NS}" get pods -o wide || true
+          kubectl -n "${NS}" get events --sort-by=.lastTimestamp || true
+
+          IMPL_PODS="$(kubectl -n "${NS}" get pods -o name 2>/dev/null | sed 's#pod/##' | grep 'system-container-impl' || true)"
+          if [ -z "${IMPL_PODS}" ]; then
+            echo "No system-container-impl pods found for diagnostics."
+          else
+            for pod in ${IMPL_PODS}; do
+              echo "::group::Describe ${pod}"
+              kubectl -n "${NS}" describe pod "${pod}" || true
+              echo "::endgroup::"
+            done
+          fi
+          echo "::endgroup::"
+
       - name: Notify test reports
         shell: bash
         if: ${{ steps.test-run.outcome == 'success' }}
@@ -225,6 +247,28 @@ jobs:
           python_version: ${{ env.PYTHON_VERSION }}
           user_namespace: ${{ env.USER_NAMESPACE }}
           report_name: "E2EMultiUserTests_K8s=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_multiUser=${{ matrix.multi_user }}_storage=${{ matrix.storage }}"
+
+      - name: Dump impl pod diagnostics on failure
+        if: ${{ always() && steps.test-run.outcome == 'failure' }}
+        shell: bash
+        run: |
+          NS="${{ steps.configure.outputs.NAMESPACE }}"
+          echo "::group::Kubernetes diagnostics for failed e2e run"
+          echo "Namespace: ${NS}"
+          kubectl -n "${NS}" get pods -o wide || true
+          kubectl -n "${NS}" get events --sort-by=.lastTimestamp || true
+
+          IMPL_PODS="$(kubectl -n "${NS}" get pods -o name 2>/dev/null | sed 's#pod/##' | grep 'system-container-impl' || true)"
+          if [ -z "${IMPL_PODS}" ]; then
+            echo "No system-container-impl pods found for diagnostics."
+          else
+            for pod in ${IMPL_PODS}; do
+              echo "::group::Describe ${pod}"
+              kubectl -n "${NS}" describe pod "${pod}" || true
+              echo "::endgroup::"
+            done
+          fi
+          echo "::endgroup::"
 
       - name: Notify test reports
         shell: bash
