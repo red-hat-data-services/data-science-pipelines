@@ -63,3 +63,5 @@ LABEL com.redhat.component="odh-ml-pipelines-api-server-v2-container" \
       io.k8s.display-name="odh-ml-pipelines-api-server-v2" \
       io.k8s.description="odh-ml-pipelines-api-server-v2" \
       com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

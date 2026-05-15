@@ -41,3 +41,5 @@ WORKDIR /bin
 COPY --from=builder /bin/cache_server /bin/cache_server
 
 ENTRYPOINT [ "/bin/cache_server" ]
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

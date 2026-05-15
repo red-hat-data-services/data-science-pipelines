@@ -47,3 +47,5 @@ RUN tar -xzvf /test.tar.gz
 WORKDIR /test/integration
 
 ENTRYPOINT [ "./run.sh" ]
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.

@@ -1,5 +1,7 @@
 module github.com/kubeflow/pipelines
 
+// CI noop: same go.mod paths as PR #1435 (CVE bump); no functional change — infra vs PR comparison.
+
 go 1.24.6
 
 require (
