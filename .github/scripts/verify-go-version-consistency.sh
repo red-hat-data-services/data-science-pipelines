@@ -11,7 +11,10 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-GOMOD_VERSION=$(grep -E '^go [0-9]' "$REPO_ROOT/go.mod" | awk '{print $2}' || true)
+GOMOD_VERSION=$(grep -E '^toolchain go[0-9]' "$REPO_ROOT/go.mod" | sed 's/toolchain go//' || true)
+if [[ -z "$GOMOD_VERSION" ]]; then
+    GOMOD_VERSION=$(grep -E '^go [0-9]' "$REPO_ROOT/go.mod" | awk '{print $2}' || true)
+fi
 
 if [[ -z "$GOMOD_VERSION" ]]; then
     echo "ERROR: Could not extract Go version from go.mod" >&2
