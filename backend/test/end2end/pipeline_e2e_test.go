@@ -16,9 +16,11 @@ package end2end
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_model"
@@ -235,7 +237,68 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func
 			})
 		}
 	})
+
+	// E2eGpu-labeled specs run even when the package has no --label-filter; see
+	// AGENTS.md (Local testing → Backend Ginkgo test suites → End-to-end tests).
+	Context("GPU component test >", Label(E2eGpu), func() {
+		var pipelineDir = "valid/gpu"
+		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
+		for _, pipelineFile := range pipelineFiles {
+			if !gpuPipelineFixtureSelected(pipelineFile) {
+				continue
+			}
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
 })
+
+// gpuPipelineFixtureSelected returns whether to run an E2E for this IR fixture.
+// Fixtures are vendored from ods-ci (NVIDIA vs AMD); only one vendor typically matches the cluster.
+// KFP_E2E_GPU_VENDOR: unset or "nvidia" → pytorch_nvidia_gpu_availability.yaml only;
+// "amd" → pytorch_amd_gpu_availability.yaml only; "both" → all yaml in valid/gpu.
+func gpuPipelineFixtureSelected(pipelineFile string) bool {
+	vendor := strings.ToLower(strings.TrimSpace(os.Getenv("KFP_E2E_GPU_VENDOR")))
+	switch vendor {
+	case "amd":
+		return strings.Contains(pipelineFile, "amd")
+	case "both", "all":
+		return true
+	default:
+		return strings.Contains(pipelineFile, "nvidia")
+	}
+}
+
+func TestGpuPipelineFixtureSelected(t *testing.T) {
+	nvidiaFixture := "pytorch_nvidia_gpu_availability.yaml"
+	amdFixture := "pytorch_amd_gpu_availability.yaml"
+	testCases := []struct {
+		name                 string
+		vendor               string
+		expectNvidiaSelected bool
+		expectAmdSelected    bool
+	}{
+		{"default selects nvidia only", "", true, false},
+		{"amd selects amd only", "amd", false, true},
+		{"both selects both", "both", true, true},
+		{"all selects both", "all", true, true},
+		{"trim and lowercase for amd", " AMD ", false, true},
+		{"unknown vendor falls back to nvidia", "nvidai", true, false},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Setenv("KFP_E2E_GPU_VENDOR", testCase.vendor)
+			if selected := gpuPipelineFixtureSelected(nvidiaFixture); selected != testCase.expectNvidiaSelected {
+				t.Fatalf("nvidia selection=%t, want %t", selected, testCase.expectNvidiaSelected)
+			}
+			if selected := gpuPipelineFixtureSelected(amdFixture); selected != testCase.expectAmdSelected {
+				t.Fatalf("amd selection=%t, want %t", selected, testCase.expectAmdSelected)
+			}
+		})
+	}
+}
 
 func validatePipelineRunSuccess(pipelineFile string, pipelineDir string, testContext *apitests.TestContext) {
 	testutil.CheckIfSkipping(pipelineFile)
