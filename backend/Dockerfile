@@ -24,7 +24,7 @@ ARG TARGETARCH
 
 USER root
 
-RUN dnf install -y cmake clang openssl
+RUN dnf install -y clang
 
 COPY ${SOURCE_CODE}/go.mod ./
 COPY ${SOURCE_CODE}/go.sum ./
@@ -36,8 +36,16 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-      GOFIPS140=certified \
+# Set CC per target arch for CGO cross-compilation (required by mattn/go-sqlite3).
+# clang targets any architecture via --target, avoiding the need for QEMU emulation.
+#
+# TODO: switch GOFIPS140 from "latest" to "certified" once go-toolset ships a certified.txt snapshot.
+# As of go-toolset 1.26.2-1.el9_8, only v1.0.0 and v1.26.0 snapshots exist; no certified.txt.
+# Verify with: docker run --rm <go-toolset-image> ls /usr/lib/golang/lib/fips140/certified.txt
+RUN if [ "${TARGETARCH}" = "amd64" ]; then CC="clang --target=x86_64-redhat-linux-gnu"; \
+    elif [ "${TARGETARCH}" = "arm64" ]; then CC="clang --target=aarch64-redhat-linux-gnu"; fi && \
+    GO111MODULE=on CGO_ENABLED=1 CC="${CC}" GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      GOFIPS140=latest \
       go build -o /bin/apiserver ./backend/src/apiserver/ && \
     dnf clean all
 
