@@ -14,13 +14,11 @@
 
 # Build arguments
 ARG SOURCE_CODE=.
-ARG FIPS_ENABLED=1
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
 FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1777889793@sha256:1c1259373e6feb4b57de490452379c40888cf6e876154cd2ace17eae9c64a7ea AS builder
 
-ARG FIPS_ENABLED
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -38,18 +36,9 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-# FIPS_ENABLED=1 (default): FIPS-compliant build with strictfipsruntime (requires CGO)
-# FIPS_ENABLED=0: Non-FIPS build for local development on Apple Silicon (pure Go, no CGO)
-RUN if [ "${FIPS_ENABLED}" = "0" ]; then \
-      GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        go build -o /bin/apiserver ./backend/src/apiserver/; \
-    elif [ "${FIPS_ENABLED}" = "1" ]; then \
-      GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        GOEXPERIMENT=strictfipsruntime \
-        go build -tags strictfipsruntime -o /bin/apiserver ./backend/src/apiserver/; \
-    else \
-      echo "ERROR: FIPS_ENABLED must be '0' or '1', got '${FIPS_ENABLED}'" && exit 1; \
-    fi && \
+RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      GOFIPS140=certified \
+      go build -o /bin/apiserver ./backend/src/apiserver/ && \
     dnf clean all
 
 # 2. Compile preloaded pipeline samples

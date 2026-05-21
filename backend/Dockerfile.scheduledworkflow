@@ -14,7 +14,6 @@
 
 # Build arguments
 ARG SOURCE_CODE=.
-ARG FIPS_ENABLED=1
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
@@ -22,7 +21,6 @@ FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1777889793@sha256:1c12593
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
-ARG FIPS_ENABLED
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -30,10 +28,7 @@ ARG TARGETARCH
 USER root
 
 RUN dnf upgrade -y && \
-    dnf install -y bash \
-                   git \
-                   openssh \
-                   gcc && \
+    dnf install -y bash && \
     dnf clean all && rm -rf /var/cache/yum
 
 COPY ${SOURCE_CODE}/go.mod ./
@@ -46,18 +41,9 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-# FIPS_ENABLED=1 (default): FIPS-compliant build with strictfipsruntime (requires CGO)
-# FIPS_ENABLED=0: Non-FIPS build for local development on Apple Silicon (pure Go, no CGO)
-RUN if [ "${FIPS_ENABLED}" = "0" ]; then \
-      GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        go build -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go; \
-    elif [ "${FIPS_ENABLED}" = "1" ]; then \
-      GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        GOEXPERIMENT=strictfipsruntime \
-        go build -tags strictfipsruntime -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go; \
-    else \
-      echo "ERROR: FIPS_ENABLED must be '0' or '1', got '${FIPS_ENABLED}'" && exit 1; \
-    fi
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      GOFIPS140=certified \
+      go build -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 WORKDIR /bin

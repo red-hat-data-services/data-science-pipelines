@@ -15,7 +15,6 @@
 # Build arguments
 ARG SOURCE_CODE=.
 ARG CI_CONTAINER_VERSION="unknown"
-ARG FIPS_ENABLED=1
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
@@ -25,7 +24,6 @@ FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1777889793@sha256:1c12593
 
 ## Build args to be used at this step
 ARG SOURCE_CODE
-ARG FIPS_ENABLED
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -42,29 +40,17 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-# Validate FIPS_ENABLED value
-RUN if [ "${FIPS_ENABLED}" != "0" ] && [ "${FIPS_ENABLED}" != "1" ]; then \
-      echo "ERROR: FIPS_ENABLED must be '0' or '1', got '${FIPS_ENABLED}'" && exit 1; \
-    fi
-
-# Build non-FIPS version (always built)
-RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -tags netgo -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
-
-# Build FIPS version only when FIPS_ENABLED=1
-# FIPS_ENABLED=0: Skip FIPS build for local development on Apple Silicon
-RUN if [ "${FIPS_ENABLED}" = "1" ]; then \
-      GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOEXPERIMENT=strictfipsruntime go build -tags 'netgo strictfipsruntime' -o /bin/launcher-v2-fips ./backend/src/v2/cmd/launcher-v2/*.go; \
-    else \
-      cp /bin/launcher-v2 /bin/launcher-v2-fips; \
-    fi
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      GOFIPS140=certified \
+      go build -tags netgo -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
 WORKDIR /bin
 
 COPY --from=builder /bin/launcher-v2 /bin/launcher-v2
-COPY --from=builder /bin/launcher-v2-fips /bin/launcher-v2-fips
-RUN chmod +x /bin/launcher-v2 && chmod +x /bin/launcher-v2-fips
+# Symlink needed while the operator still references launcher-v2-fips separately
+RUN chmod +x /bin/launcher-v2 && ln -s /bin/launcher-v2 /bin/launcher-v2-fips
 
 USER 65534
 
