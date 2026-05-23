@@ -4,8 +4,6 @@ go 1.26
 
 toolchain go1.26.3
 
-godebug fips140=auto
-
 require (
 	github.com/Masterminds/squirrel v0.0.0-20190107164353-fa735ea14f09
 	github.com/VividCortex/mysqlerr v0.0.0-20170204212430-6c6b55f8796f
