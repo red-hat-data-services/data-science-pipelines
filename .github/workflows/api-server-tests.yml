@@ -116,7 +116,7 @@ jobs:
 
       - name: Configure Cluster CA Cert for TLS-Enabled Tests
         shell: bash
-        if: ${{ matrix.pod_to_pod_tls_enabled == 'true' && steps.deploy.outcome == 'success' }}
+        if: ${{ matrix.pod_to_pod_tls_enabled == 'true'}}
         run: |
           kubectl get configmap openshift-service-ca.crt -n kubeflow -o jsonpath='{.data.service-ca\.crt}' > "${{ github.workspace }}/ca.crt"
           echo "CA_CERT_PATH=${{ github.workspace }}/ca.crt" >> "$GITHUB_ENV"
