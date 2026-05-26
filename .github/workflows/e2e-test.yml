@@ -7,7 +7,6 @@ env:
   PYTHON_VERSION: "3.9"
   USER_NAMESPACE: "kubeflow-user-example-com"
   CA_CERT_PATH: ""
-  SKIP_OPERATOR_DEPLOYMENT: ${{ github.repository_owner != 'opendatahub-io' }}
 
 on:
   push:
@@ -123,12 +122,10 @@ jobs:
       - name: Create cluster
         uses: ./.github/actions/create-cluster
         id: create-cluster
-        if: ${{ !(matrix.cache_enabled == 'false' && matrix.pod_to_pod_tls_enabled == 'true' && env.SKIP_OPERATOR_DEPLOYMENT == 'true') }}
         with:
           k8s_version: ${{ matrix.k8s_version }}
           cluster_name: ${{ env.CLUSTER_NAME }}
 
-      # deploy-kfp.sh's elif chain selects cache-disabled over tls-enabled; skip unsupported combination for non-operator deployment
       - name: Deploy KFP
         uses: ./.github/actions/deploy
         if: ${{ steps.create-cluster.outcome == 'success' }}
@@ -144,13 +141,12 @@ jobs:
           image_path: ${{ needs.build.outputs.IMAGE_PATH }}
           image_tag: ${{ needs.build.outputs.IMAGE_TAG }}
           image_registry: ${{ needs.build.outputs.IMAGE_REGISTRY }}
-          skip_operator_deployment: ${{ env.SKIP_OPERATOR_DEPLOYMENT }}
 
       - name: Configure Cluster CA Cert for TLS-Enabled Tests
         shell: bash
         if: ${{ matrix.pod_to_pod_tls_enabled == 'true' && steps.deploy.outcome == 'success'}}
         run: |
-          if [[ "${{ matrix.proxy }}" == "true" || "${{ env.SKIP_OPERATOR_DEPLOYMENT }}" == "true" ]]; then
+          if [[ "${{ matrix.proxy }}" == "true" ]]; then
             kubectl get secret kfp-api-tls-cert -n kubeflow -o jsonpath='{.data.ca\.crt}' | base64 -d > "${{ github.workspace }}/ca.crt"
           else
             kubectl get configmap openshift-service-ca.crt -n kubeflow -o jsonpath='{.data.service-ca\.crt}' > "${{ github.workspace }}/ca.crt"

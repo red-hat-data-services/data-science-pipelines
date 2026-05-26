@@ -35,7 +35,6 @@ class DSPDeployer:
         self.dspa_name = None
         self.operator_namespace = None
         self.external_db_namespace = 'test-mariadb'
-        self.skip_operator_deployment = False
         self.is_operator_deployment = None
         self.tls_manager = None
         self.deployment_manager = K8sDeploymentManager()
@@ -63,8 +62,7 @@ class DSPDeployer:
         boolean_args = [
             'deploy_pypi_server', 'deploy_external_argo', 'proxy',
             'cache_enabled', 'multi_user', 'artifact_proxy', 'forward_port',
-            'pod_to_pod_tls_enabled', 'deploy_external_db',
-            'skip_operator_deployment'
+            'pod_to_pod_tls_enabled', 'deploy_external_db'
         ]
         for arg_name in boolean_args:
             if hasattr(self.args, arg_name):
@@ -75,10 +73,6 @@ class DSPDeployer:
         """Extract repository information, create namespaces, init sub-
         deployers."""
         print('🔧 Setting up deployment environment...')
-
-        if self.args.skip_operator_deployment:
-            self.skip_operator_deployment = self.args.skip_operator_deployment
-            print('Skipping deployment via operator and using direct deployment')
 
         if self.args.github_repository:
             self.repo_owner = self.args.github_repository.split('/')[0]
@@ -147,11 +141,6 @@ class DSPDeployer:
 
     def _should_use_operator_deployment(self) -> bool:
         """Determine whether to use DSPO (operator) or direct deployment."""
-        if self.skip_operator_deployment:
-            print(
-                '⚠️  User selected to skip DSPO deployment, using direct deployment'
-            )
-            return False
         if self.args.multi_user:
             print(
                 "⚠️  Multi-user mode detected: DSPO doesn't support multi-user, using direct deployment"
@@ -326,9 +315,6 @@ def main():
     parser.add_argument(
         '--deploy-external-argo', default='false',
         help='Deploy Argo Workflows externally in separate namespace')
-    parser.add_argument(
-        '--skip-operator-deployment', default='false',
-        help='Skip deployment via operator')
     parser.add_argument(
         '--argo-namespace', default='argo',
         help='Namespace for external Argo Workflows deployment')
