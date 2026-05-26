@@ -77,6 +77,10 @@ inputs:
     description: "Namespace for DSPA deployment"
     required: false
     default: 'kubeflow'
+  skip_operator_deployment:
+    description: "True if you do not want the deployment to use DSPO"
+    required: false
+    default: 'true'
   deploy_external_db:
     description: "Deploy DB externally instead of via DSPO"
     required: false
@@ -201,6 +205,7 @@ runs:
         FORWARD_PORT: ${{ inputs.forward_port }}
         POD_TO_POD_TLS_ENABLED: ${{ inputs.pod_to_pod_tls_enabled }}
         NAMESPACE: ${{ inputs.namespace }}
+        SKIP_OPERATOR_DEPLOYMENT: ${{ inputs.skip_operator_deployment }}
         IMAGE_PATH_PREFIX: ${{ inputs.image_path_prefix }}
         DEPLOY_EXTERNAL_DB: ${{ inputs.deploy_external_db }}
         DSPA_NAME: ${{ inputs.dspa_name }}
@@ -212,6 +217,7 @@ runs:
         NAMESPACE="${NAMESPACE:-kubeflow}"
         PROXY="${PROXY:-false}"
         POD_TO_POD_TLS_ENABLED="${POD_TO_POD_TLS_ENABLED:-false}"
+        SKIP_OPERATOR_DEPLOYMENT="${SKIP_OPERATOR_DEPLOYMENT:-true}"
         ARGO_NAMESPACE="${ARGO_NAMESPACE:-argo}"
         DEPLOY_EXTERNAL_ARGO="${DEPLOY_EXTERNAL_ARGO:-false}"
 
@@ -233,6 +239,7 @@ runs:
           --forward-port "$FORWARD_PORT" \
           --pod-to-pod-tls-enabled "$POD_TO_POD_TLS_ENABLED" \
           --namespace "$NAMESPACE" \
+          --skip-operator-deployment "$SKIP_OPERATOR_DEPLOYMENT" \
           --image-path-prefix "$IMAGE_PATH_PREFIX" \
           --deploy-external-db "$DEPLOY_EXTERNAL_DB" \
           --dspa-name "$DSPA_NAME" \
