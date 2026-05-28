@@ -36,6 +36,7 @@ func resetURLConfig() {
 
 func TestValidatePipelineURL_AllowedDomains(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	// Default allowed domains should pass
@@ -51,6 +52,7 @@ func TestValidatePipelineURL_AllowedDomains(t *testing.T) {
 
 func TestValidatePipelineURL_BlockedDomain(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	// localhost should fail (not in allowlist)
@@ -61,6 +63,7 @@ func TestValidatePipelineURL_BlockedDomain(t *testing.T) {
 
 func TestValidatePipelineURL_SchemeRestriction(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	// HTTP blocked by default
@@ -74,6 +77,7 @@ func TestValidatePipelineURL_SchemeRestriction(t *testing.T) {
 
 func TestValidatePipelineURL_HTTPAllowedWhenConfigured(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	viper.Set("PIPELINE_URL_ALLOW_HTTP", "true")
 	resetURLConfig()
 
@@ -83,6 +87,7 @@ func TestValidatePipelineURL_HTTPAllowedWhenConfigured(t *testing.T) {
 
 func TestValidatePipelineURL_PortRestriction(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	// Default port (no port specified) should pass
@@ -99,6 +104,7 @@ func TestValidatePipelineURL_PortRestriction(t *testing.T) {
 
 func TestValidatePipelineURL_PortMustMatchScheme(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	viper.Set("PIPELINE_URL_ALLOW_HTTP", "true")
 	resetURLConfig()
 
@@ -115,6 +121,7 @@ func TestValidatePipelineURL_PortMustMatchScheme(t *testing.T) {
 
 func TestValidatePipelineURL_UserConfiguredDomains(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	viper.Set("PIPELINE_URL_ALLOWED_DOMAINS", "example.com")
 	resetURLConfig()
 
@@ -127,6 +134,7 @@ func TestValidatePipelineURL_UserConfiguredDomains(t *testing.T) {
 
 func TestValidatePipelineURL_InvalidURL(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	err := ValidatePipelineURL("not-a-valid-url")
@@ -136,6 +144,7 @@ func TestValidatePipelineURL_InvalidURL(t *testing.T) {
 
 func TestValidatePipelineURL_FileSchemeBlocked(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	err := ValidatePipelineURL("file:///etc/passwd")
@@ -196,6 +205,7 @@ func TestIsBlockedIP_IPv6Metadata(t *testing.T) {
 
 func TestValidatePipelineURL_HostnameNormalization(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	// Trailing dot (FQDN) should be normalized and pass
@@ -207,6 +217,7 @@ func TestValidatePipelineURL_HostnameNormalization(t *testing.T) {
 
 func TestSafePipelineHTTPClient_RedirectValidation(t *testing.T) {
 	viper.Reset()
+	viper.Set("PIPELINE_URL_VALIDATION_ENABLED", "true")
 	resetURLConfig()
 
 	client := SafePipelineHTTPClient()

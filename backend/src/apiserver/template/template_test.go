@@ -277,7 +277,7 @@ func TestScheduledWorkflow_CustomServiceAccount(t *testing.T) {
 		},
 	}
 
-	actualScheduledWorkflow, err := v2Template.ScheduledWorkflow(modelJob)
+	actualScheduledWorkflow, err := v2Template.ScheduledWorkflow(modelJob, nil)
 	require.Nil(t, err)
 	assert.Equal(t, "custom-sa", actualScheduledWorkflow.Spec.ServiceAccount)
 }
