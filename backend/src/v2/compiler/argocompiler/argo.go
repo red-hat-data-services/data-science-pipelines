@@ -448,14 +448,17 @@ var driverResources = k8score.ResourceRequirements{
 	},
 }
 
-// Launcher only copies the binary into the volume, so it needs minimal resources.
+// Launcher only copies the binary into the volume, but recent launcher builds can
+// briefly peak above 128Mi and get OOM-killed (exit code 137) before task startup.
+// Keep this lightweight while leaving enough headroom to avoid PodInitializing
+// failures in system-container-impl pods.
 var launcherResources = k8score.ResourceRequirements{
 	Limits: map[k8score.ResourceName]k8sres.Quantity{
-		k8score.ResourceMemory: k8sres.MustParse("128Mi"),
+		k8score.ResourceMemory: k8sres.MustParse("256Mi"),
 		k8score.ResourceCPU:    k8sres.MustParse("0.5"),
 	},
 	Requests: map[k8score.ResourceName]k8sres.Quantity{
-		k8score.ResourceCPU: k8sres.MustParse("0.1"),
+		k8score.ResourceCPU:    k8sres.MustParse("0.1"),
 	},
 }
 

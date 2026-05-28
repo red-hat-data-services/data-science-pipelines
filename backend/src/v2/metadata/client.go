@@ -54,7 +54,18 @@ const (
 	pipelineContextTypeName    = "system.Pipeline"
 	pipelineRunContextTypeName = "system.PipelineRun"
 	ImporterExecutionTypeName  = "system.ImporterExecution"
-	mlmdClientSideMaxRetries   = 3
+	// mlmdClientSideMaxRetries is the number of times the MLMD client will retry
+	// a failed gRPC call before returning an error. This is intentionally higher
+	// than a typical RPC retry budget because MySQL deadlocks (codes.Aborted) on
+	// context creation can occur under bursty startup concurrency.
+	mlmdClientSideMaxRetries = 10
+	// Exponential backoff parameters tuned for MLMD/MySQL startup contention:
+	// 1 s base, 25% jitter, capped at 30 s per attempt.
+	mlmdClientSideBackoffBase   = 1 * time.Second
+	mlmdClientSideBackoffJitter = 0.25
+	// mlmdClientSideBackoffCap limits the maximum per-attempt wait so a single
+	// deadlock retry never stalls a pod for more than 30 s.
+	mlmdClientSideBackoffCap = 30 * time.Second
 )
 
 type ExecutionType string
@@ -118,10 +129,16 @@ type Client struct {
 
 // NewClient creates a Client given the MLMD server address and port.
 func NewClient(serverAddress, serverPort string, tlsEnabled bool, caCertPath string) (*Client, error) {
+	// Retry on Aborted (MySQL deadlock), Unavailable (transient connectivity),
+	// and Internal (some transient mysql_real_connect / DNS failures surfaced by MLMD).
 	opts := []grpc_retry.CallOption{
 		grpc_retry.WithMax(mlmdClientSideMaxRetries),
-		grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitter(300*time.Millisecond, 0.20)),
-		grpc_retry.WithCodes(codes.Aborted),
+		grpc_retry.WithBackoff(grpc_retry.BackoffExponentialWithJitterBounded(
+			mlmdClientSideBackoffBase,
+			mlmdClientSideBackoffJitter,
+			mlmdClientSideBackoffCap,
+		)),
+		grpc_retry.WithCodes(codes.Aborted, codes.Unavailable, codes.Internal),
 	}
 
 	creds := insecure.NewCredentials()

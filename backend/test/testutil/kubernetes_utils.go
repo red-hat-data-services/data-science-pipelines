@@ -17,6 +17,7 @@ package testutil
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -31,6 +32,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+)
+
+const (
+	logReadMaxAttempts = 4
+	logReadRetryDelay  = 5 * time.Second
 )
 
 func CreateK8sClient() (*kubernetes.Clientset, error) {
@@ -73,24 +79,28 @@ func ReadPodLogs(client *kubernetes.Clientset, namespace string, podName string,
 	if podFromPodName != nil {
 		for _, container := range podFromPodName.Spec.Containers {
 			podLogOptions.Container = container.Name
-			podLogsRequest := client.CoreV1().Pods(namespace).GetLogs(podFromPodName.Name, podLogOptions)
-			podLogs, err := podLogsRequest.Stream(context.Background()) // Pass a context for cancellation
+			logs, err := readContainerLogsWithRetry(client, namespace, podFromPodName.Name, podLogOptions)
 			if err != nil {
-				logger.Log("Failed to stream pod logs due to %v", err)
+				logger.Log("Failed to stream pod logs for pod %s container %s due to %v", podFromPodName.Name, container.Name, err)
+				continue
 			}
-			defer func(podLogs io.ReadCloser) {
-				err = podLogs.Close()
-				if err != nil {
-					logger.Log("Failed to close pod log reader due to %v", err)
+			buf.WriteString(logs)
+
+			// If the current container restarted and current logs are empty, attempt previous logs once.
+			if strings.TrimSpace(logs) == "" {
+				previousOptions := *podLogOptions
+				previousOptions.Previous = true
+				previousLogs, previousErr := readContainerLogsOnce(client, namespace, podFromPodName.Name, &previousOptions)
+				if previousErr == nil && strings.TrimSpace(previousLogs) != "" {
+					buf.WriteString(previousLogs)
 				}
-			}(podLogs)
-			_, err = io.Copy(buf, podLogs)
-			if err != nil {
-				logger.Log("Failed to add pod logs to buffer due to: %v", err)
 			}
 		}
+		if buf.Len() == 0 {
+			logger.Log("No pod logs available for pod '%s'. %s", podFromPodName.Name, formatPodStatus(podFromPodName))
+		}
 	} else {
-		logger.Log("No pod logs available for pod with name '%s'", podName)
+		logger.Log("No pod logs available for pod with name '%s'.", podName)
 	}
 	return buf.String()
 }
@@ -114,6 +124,18 @@ func GetPodContainingName(client *kubernetes.Clientset, namespace, podName strin
 	if err != nil {
 		logger.Log("Failed to list pods due to: %v", err)
 	}
+	// Exact name match first.
+	for _, pod := range pods.Items {
+		if pod.Name == podName {
+			return &pod
+		}
+	}
+	// Prefix match keeps semantics for workflow-generated suffixes.
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, podName+"-") {
+			return &pod
+		}
+	}
 	for _, pod := range pods.Items {
 		podNameSplit := strings.Split(pod.Name, "-")
 		expectedPodNameSplit := strings.Split(podName, "-")
@@ -128,6 +150,66 @@ func GetPodContainingName(client *kubernetes.Clientset, namespace, podName strin
 		}
 	}
 	return nil
+}
+
+func readContainerLogsWithRetry(client *kubernetes.Clientset, namespace, podName string, options *v1.PodLogOptions) (string, error) {
+	var lastErr error
+	for attempt := 1; attempt <= logReadMaxAttempts; attempt++ {
+		logs, err := readContainerLogsOnce(client, namespace, podName, options)
+		if err == nil {
+			return logs, nil
+		}
+		lastErr = err
+		if !isTransientLogReadError(err) || attempt == logReadMaxAttempts {
+			break
+		}
+		time.Sleep(logReadRetryDelay)
+	}
+	if lastErr == nil {
+		lastErr = errors.New("unknown log stream failure")
+	}
+	return "", lastErr
+}
+
+func readContainerLogsOnce(client *kubernetes.Clientset, namespace, podName string, options *v1.PodLogOptions) (string, error) {
+	podLogsRequest := client.CoreV1().Pods(namespace).GetLogs(podName, options)
+	podLogs, err := podLogsRequest.Stream(context.Background())
+	if err != nil {
+		return "", err
+	}
+	if podLogs == nil {
+		return "", errors.New("nil pod log stream")
+	}
+	defer func() {
+		if closeErr := podLogs.Close(); closeErr != nil {
+			logger.Log("Failed to close pod log reader due to %v", closeErr)
+		}
+	}()
+	buf := new(bytes.Buffer)
+	if _, copyErr := io.Copy(buf, podLogs); copyErr != nil {
+		return "", copyErr
+	}
+	return buf.String(), nil
+}
+
+func isTransientLogReadError(err error) bool {
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "PodInitializing") || strings.Contains(errMsg, "is waiting to start")
+}
+
+func formatPodStatus(pod *v1.Pod) string {
+	containerStates := make([]string, 0, len(pod.Status.ContainerStatuses))
+	for _, status := range pod.Status.ContainerStatuses {
+		switch {
+		case status.State.Waiting != nil:
+			containerStates = append(containerStates, fmt.Sprintf("%s=waiting(%s)", status.Name, status.State.Waiting.Reason))
+		case status.State.Running != nil:
+			containerStates = append(containerStates, fmt.Sprintf("%s=running", status.Name))
+		case status.State.Terminated != nil:
+			containerStates = append(containerStates, fmt.Sprintf("%s=terminated(%s)", status.Name, status.State.Terminated.Reason))
+		}
+	}
+	return fmt.Sprintf("pod phase=%s, container states=[%s]", pod.Status.Phase, strings.Join(containerStates, ", "))
 }
 
 // GetPodContainingContainer - Get the name of the pod with container name containing substring
