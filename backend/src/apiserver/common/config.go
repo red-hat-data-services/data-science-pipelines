@@ -55,13 +55,10 @@ const (
 	PipelineURLAllowHTTP                    string = "PIPELINE_URL_ALLOW_HTTP"
 	PipelineURLTimeout                      string = "PIPELINE_URL_TIMEOUT"
 	PipelineURLValidationEnabled            string = "PIPELINE_URL_VALIDATION_ENABLED"
-<<<<<<< HEAD
-=======
 	PluginMaxKeys                           string = "PLUGIN_MAX_KEYS"
 	PluginMaxPayloadBytes                   string = "PLUGIN_MAX_PAYLOAD_BYTES"
 	PluginMaxTotalPayloadBytes              string = "PLUGIN_MAX_TOTAL_PAYLOAD_BYTES"
 	PluginMaxNestingDepth                   string = "PLUGIN_MAX_NESTING_DEPTH"
->>>>>>> upstream/master
 )
 
 type PluginLimitsConfig struct {

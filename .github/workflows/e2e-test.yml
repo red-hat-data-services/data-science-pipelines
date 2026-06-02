@@ -7,16 +7,12 @@ env:
   PYTHON_VERSION: "3.9"
   USER_NAMESPACE: "kubeflow-user-example-com"
   CA_CERT_PATH: ""
-<<<<<<< HEAD
   SKIP_OPERATOR_DEPLOYMENT: ${{ github.repository_owner != 'opendatahub-io' }}
-=======
   AWS_ACCESS_KEY_ID: 'minio'
   AWS_SECRET_ACCESS_KEY: 'minio123'
   AWS_S3_BUCKET: 'mlpipeline'
   MLFLOW_TRACKING_URI: "https://localhost:8080/mlflow"
   MLFLOW_TRACKING_INSECURE_TLS: "true"
->>>>>>> upstream/master
-
 on:
   push:
     branches:
@@ -83,7 +79,6 @@ jobs:
         test_label: [ "E2ECritical", "E2EEssential", "E2EParallelNested" ]
         pod_to_pod_tls_enabled: [ "true" ]
         include:
-<<<<<<< HEAD
           - k8s_version: "v1.31.0"
             cache_enabled: "false"
             proxy: "true"
@@ -97,21 +92,6 @@ jobs:
           - k8s_version: "v1.31.0"
             cache_enabled: "false"
             test_label: "E2EFailure"
-=======
-          - k8s_version: "v1.31.14"
-            cache_enabled: "false"
-            argo_version: "v3.5.14"
-            test_label: "E2ECritical"
-          - k8s_version: "v1.35.0"
-            cache_enabled: "false"
-            proxy: "true"
-            test_label: "E2EProxy"
-          - k8s_version: "v1.35.0"
-            cache_enabled: "false"
-            test_label: "E2EFailure"
-          - k8s_version: "v1.35.0"
-            cache_enabled: "true"
->>>>>>> upstream/master
             pod_to_pod_tls_enabled: "true"
           - deploy_pypi_server: "false"
             k8s_version: "v1.31.0"
@@ -325,14 +305,11 @@ jobs:
           default_namespace: ${{ steps.configure.outputs.NAMESPACE }}
           python_version: ${{ env.PYTHON_VERSION }}
           user_namespace: ${{ env.USER_NAMESPACE }}
-<<<<<<< HEAD
           report_name: "E2EMultiUserTests_K8s=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_multiUser=${{ matrix.multi_user }}_artifactProxy=${{ matrix.artifact_proxy }}"
           deployment_name: ${{ steps.deploy.outputs.deployment_name }}
           deployment_service_account_name: ${{ steps.deploy.outputs.service_account_name }}
           pipeline_runner_service_account_name: ${{ steps.deploy.outputs.pipeline_runner_service_account }}
           deployment_mode: ${{ steps.deploy.outputs.deployment_mode }}
-=======
-          report_name: "E2EMultiUserTests_K8s=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_multiUser=${{ matrix.multi_user }}"
 
 
   end-to-end-critical-mlflow-tests:
@@ -448,4 +425,3 @@ jobs:
           tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
           ca_cert_path: ${{ env.CA_CERT_PATH }}
           mlflow_enabled: 'true'
->>>>>>> upstream/master

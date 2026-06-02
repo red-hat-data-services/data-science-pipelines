@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-<<<<<<< HEAD
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	scheduledworkflow "github.com/kubeflow/pipelines/backend/src/crd/pkg/apis/scheduledworkflow/v1beta1"
 
@@ -34,11 +33,8 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/objectstore"
 	"github.com/kubeflow/pipelines/third_party/ml-metadata/go/ml_metadata"
 
-=======
->>>>>>> upstream/master
 	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
-	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/archive"
 	kfpauth "github.com/kubeflow/pipelines/backend/src/apiserver/auth"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/client"
@@ -51,7 +47,6 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/apiserver/template"
 	exec "github.com/kubeflow/pipelines/backend/src/common"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
-	scheduledworkflow "github.com/kubeflow/pipelines/backend/src/crd/pkg/apis/scheduledworkflow/v1beta1"
 	scheduledworkflowclient "github.com/kubeflow/pipelines/backend/src/crd/pkg/client/clientset/versioned/typed/scheduledworkflow/v1beta1"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1315,21 +1310,18 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 			return nil, util.NewInternalServerError(err, "Failed to create a recurring run with an invalid pipeline spec manifest")
 		}
 
-<<<<<<< HEAD
 		// TODO(gkcalat): consider changing the flow. Other resource UUIDs are assigned by their respective stores (DB).
 		// Convert modelJob into scheduledWorkflow.
 		scheduledWorkflow, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
-=======
 		if pluginsEnabled {
 			// Plugin-enabled: create a lightweight SWF without inline workflow spec
 			// so the SWF controller calls the CreateRun API for per-run plugin logic.
-			scheduledWorkflow, err = template.NewGenericScheduledWorkflow(job)
+			scheduledWorkflow, err = template.NewGenericScheduledWorkflow(job, r.getOwnerReferences())
 		} else {
 			// TODO(gkcalat): consider changing the flow. Other resource UUIDs are assigned by their respective stores (DB).
 			// Convert modelJob into scheduledWorkflow.
-			scheduledWorkflow, err = tmpl.ScheduledWorkflow(job)
+			scheduledWorkflow, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
 		}
->>>>>>> upstream/master
 		if err != nil {
 			return nil, util.Wrap(err, "Failed to create a recurring run during scheduled workflow creation")
 		}
@@ -1357,15 +1349,12 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 			return nil, util.Wrap(err, "Failed to fetch a template with an invalid pipeline spec manifest")
 		}
 
-<<<<<<< HEAD
 		_, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
-=======
 		if v2Tmpl, ok := tmpl.(*template.V2Spec); ok {
 			err = v2Tmpl.ValidateJobInputs(job)
 		} else {
-			_, err = tmpl.ScheduledWorkflow(job)
+			_, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
 		}
->>>>>>> upstream/master
 		if err != nil {
 			return nil, util.Wrap(err, "Failed to validate the input parameters on the latest pipeline version")
 		}

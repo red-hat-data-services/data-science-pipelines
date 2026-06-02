@@ -2,11 +2,7 @@ module github.com/kubeflow/pipelines
 
 go 1.26
 
-<<<<<<< HEAD
-toolchain go1.26.2
-=======
 toolchain go1.26.3
->>>>>>> upstream/master
 
 require (
 	github.com/Masterminds/squirrel v0.0.0-20190107164353-fa735ea14f09

@@ -1529,7 +1529,6 @@ func (c *Client) getContextByID(ctx context.Context, id int64) (*pb.Context, err
 	return contexts[0], nil
 }
 
-<<<<<<< HEAD
 func buildListOpts(maxResultSize int32, orderByAscending bool, orderByField, filterQuery, nextPageToken string) *pb.ListOperationOptions {
 	orderByFieldOpt := &pb.ListOperationOptions_OrderByField{
 		IsAsc: &orderByAscending,
@@ -1549,7 +1548,8 @@ func buildListOpts(maxResultSize int32, orderByAscending bool, orderByField, fil
 		NextPageToken: &nextPageToken,
 	}
 	return opts
-=======
+}
+
 func FormatExecutionParameters(execution *Execution) map[string]interface{} {
 	if execution == nil {
 		return nil
@@ -1584,5 +1584,4 @@ func FormatScalarMetricArtifacts(outputArtifacts []*OutputArtifact) map[string]f
 		}
 	}
 	return metrics
->>>>>>> upstream/master
 }

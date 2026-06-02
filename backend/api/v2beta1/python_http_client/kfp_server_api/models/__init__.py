@@ -18,11 +18,8 @@ from kfp_server_api.models.authorize_request_resources import AuthorizeRequestRe
 from kfp_server_api.models.authorize_request_verb import AuthorizeRequestVerb
 from kfp_server_api.models.get_artifact_request_artifact_view import GetArtifactRequestArtifactView
 from kfp_server_api.models.googlerpc_status import GooglerpcStatus
-<<<<<<< HEAD
 from kfp_server_api.models.list_artifact_request_field import ListArtifactRequestField
-=======
 from kfp_server_api.models.metadata_value_render_type import MetadataValueRenderType
->>>>>>> upstream/master
 from kfp_server_api.models.pipeline_task_detail_child_task import PipelineTaskDetailChildTask
 from kfp_server_api.models.predicate_int_values import PredicateIntValues
 from kfp_server_api.models.predicate_long_values import PredicateLongValues

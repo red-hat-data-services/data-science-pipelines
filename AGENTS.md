@@ -7,11 +7,7 @@
 
 ### Document metadata
 
-<<<<<<< HEAD
-- Last updated: 2026-05-06
-=======
 - Last updated: 2026-05-31
->>>>>>> upstream/master
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
