@@ -34,11 +34,8 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-# TODO: switch GOFIPS140 from "latest" to "certified" once go-toolset ships a certified.txt snapshot.
-# As of go-toolset 1.26.2-1.el9_8, only v1.0.0 and v1.26.0 snapshots exist; no certified.txt.
-# Verify with: docker run --rm <go-toolset-image> ls /usr/lib/golang/lib/fips140/certified.txt
 RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-      GOFIPS140=latest \
+      GOFIPS140=v1.0.0 \
       go build -tags no_openssl -o /bin/apiserver ./backend/src/apiserver/
 
 # 2. Compile preloaded pipeline samples
