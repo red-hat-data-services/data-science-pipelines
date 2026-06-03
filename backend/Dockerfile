@@ -39,7 +39,7 @@ COPY ${SOURCE_CODE}/ ./
 # Verify with: docker run --rm <go-toolset-image> ls /usr/lib/golang/lib/fips140/certified.txt
 RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       GOFIPS140=latest \
-      go build -o /bin/apiserver ./backend/src/apiserver/
+      go build -tags no_openssl -o /bin/apiserver ./backend/src/apiserver/
 
 # 2. Compile preloaded pipeline samples
 FROM registry.access.redhat.com/ubi9/python-311 AS compiler

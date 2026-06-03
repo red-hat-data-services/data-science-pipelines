@@ -46,7 +46,7 @@ COPY ${SOURCE_CODE}/ ./
 # Verify with: docker run --rm <go-toolset-image> ls /usr/lib/golang/lib/fips140/certified.txt
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       GOFIPS140=latest \
-      go build -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
+      go build -tags no_openssl -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 WORKDIR /bin

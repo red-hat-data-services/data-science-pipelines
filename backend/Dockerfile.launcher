@@ -45,7 +45,7 @@ COPY ${SOURCE_CODE}/ ./
 # Verify with: docker run --rm <go-toolset-image> ls /usr/lib/golang/lib/fips140/certified.txt
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       GOFIPS140=latest \
-      go build -tags netgo -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
+      go build -tags netgo,no_openssl -ldflags '-extldflags "-static"' -o /bin/launcher-v2 ./backend/src/v2/cmd/launcher-v2/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
