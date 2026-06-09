@@ -49,7 +49,7 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 WORKDIR /bin
 
 COPY --from=builder /bin/launcher-v2 /bin/launcher-v2
-# Symlink needed while the operator still references launcher-v2-fips separately
+# Symlink needed because the operator sets V2_LAUNCHER_COMMAND=launcher-v2-fips when FIPSEnabled
 RUN chmod +x /bin/launcher-v2 && ln -s /bin/launcher-v2 /bin/launcher-v2-fips
 
 USER 65534
