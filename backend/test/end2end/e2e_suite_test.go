@@ -29,6 +29,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/test/logger"
 	"github.com/kubeflow/pipelines/backend/test/testutil"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes"
@@ -162,13 +163,32 @@ var _ = ReportAfterEach(func(specReport types.SpecReport) {
 	}
 })
 
+// Custom reporter to filter out skipped tests
+var _ = ReportAfterSuite("Generate filtered JUnit report", func(report Report) {
+	filtered := report
+	filteredSpecs := make([]types.SpecReport, 0, len(report.SpecReports))
+	for _, spec := range report.SpecReports {
+		if spec.State == types.SpecStateSkipped && spec.Failure.Message == "" || spec.LeafNodeType.Is(types.NodeTypesForSuiteLevelNodes) {
+			continue
+		}
+		filteredSpecs = append(filteredSpecs, spec)
+	}
+	filtered.SpecReports = filteredSpecs
+
+	junitPath := filepath.Join(testReportDirectory, junitReportFilename)
+	err := reporters.GenerateJUnitReportWithConfig(filtered, junitPath, reporters.JunitReportConfig{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to generate filtered JUnit report")
+
+	jsonPath := filepath.Join(testReportDirectory, jsonReportFilename)
+	err = reporters.GenerateJSONReport(filtered, jsonPath)
+	Expect(err).NotTo(HaveOccurred(), "Failed to generate filtered JSON report")
+})
+
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 	suiteConfigE2E, reporterConfigE2E := GinkgoConfiguration()
 	suiteConfigE2E.FailFast = false
 	reporterConfigE2E.ForceNewlines = true
 	reporterConfigE2E.SilenceSkips = true
-	reporterConfigE2E.JUnitReport = filepath.Join(testReportDirectory, junitReportFilename)
-	reporterConfigE2E.JSONReport = filepath.Join(testReportDirectory, jsonReportFilename)
 	RunSpecs(t, "AIPipelinesE2ETests", suiteConfigE2E, reporterConfigE2E)
 }
