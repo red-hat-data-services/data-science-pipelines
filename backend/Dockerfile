@@ -17,7 +17,7 @@ ARG SOURCE_CODE=.
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26.3@sha256:d36470d5258da00f618b7aca9bdaab8e05134aa938bd6c42d9bd17d50ed45e76 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3@sha256:d36470d5258da00f618b7aca9bdaab8e05134aa938bd6c42d9bd17d50ed45e76 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
