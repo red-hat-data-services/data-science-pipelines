@@ -34,7 +34,7 @@ RUN GO111MODULE=on go mod download
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       GOFIPS140=v1.0.0 \
       go build -tags no_openssl -o /bin/apiserver ./backend/src/apiserver/
 
