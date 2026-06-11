@@ -14,8 +14,6 @@
 
 // Launcher command for Kubeflow Pipelines v2.
 
-//go:debug fips140=auto
-
 package main
 
 import (
