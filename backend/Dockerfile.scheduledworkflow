@@ -46,6 +46,9 @@ RUN GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       go build -tags no_openssl -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
+
+ENV GODEBUG=fips140=auto
+
 WORKDIR /bin
 
 COPY --from=builder /bin/controller /bin/controller
