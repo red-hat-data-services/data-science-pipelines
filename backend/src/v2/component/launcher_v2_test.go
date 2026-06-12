@@ -308,9 +308,11 @@ func Test_executeV2_publishLogs(t *testing.T) {
 				assert.NoError(t, err, "Expected executor-logs file to exist at the qualified custom path")
 			}
 
-			outputLog, err := bucket.ReadAll(context.TODO(), logKey)
-			assert.Nil(t, err, "Expected executor-logs to be readable at key %q", logKey)
-			assert.Equal(t, "testoutput\n", string(outputLog))
+			if !test.uploadFailure {
+				outputLog, err := bucket.ReadAll(context.TODO(), logKey)
+				assert.Nil(t, err, "Expected executor-logs to be readable at key %q", logKey)
+				assert.Equal(t, "testoutput\n", string(outputLog))
+			}
 		})
 	}
 }

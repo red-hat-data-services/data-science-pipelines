@@ -262,8 +262,12 @@ while [ "$current_dir" != "/" ]; do
   current_dir="$(dirname "$current_dir")"
 done
 
+# Reports always go to backend/test/end2end/reports regardless of which suite runs
+REPORT_OUTPUT_DIR="${found_test_dir%/$TEST_DIRECTORY}/end2end/reports"
+
 if [ -n "$found_test_dir" ]; then
   echo "Found test directory at: $found_test_dir"
+  echo "Reports directory: $REPORT_OUTPUT_DIR"
   cd "$found_test_dir" || exit
 else
   echo "Error: Could not find $TEST_DIRECTORY in any parent directory"
@@ -282,4 +286,5 @@ go run github.com/onsi/ginkgo/v2/ginkgo -r -v -p \
   -customPipTrustedHost=$CUSTOM_PIP_TRUSTED_HOST \
   -serviceAccountName=pipeline-runner-"$DSPA_NAME" \
   -baseImage="registry.redhat.io/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168" \
-  -disconnectedCluster="${DISCONNECTED_CLUSTER:-false}"
+  -disconnectedCluster="${DISCONNECTED_CLUSTER:-false}" \
+  -reportOutputDir="$REPORT_OUTPUT_DIR"

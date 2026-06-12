@@ -54,7 +54,6 @@ var (
 // Test Reporting Variables
 var (
 	testLogsDirectory   = "logs"
-	testReportDirectory = "reports"
 	junitReportFilename = "junit.xml"
 	jsonReportFilename  = "e2e.json"
 )
@@ -62,8 +61,8 @@ var (
 var _ = BeforeSuite(func() {
 	err := os.MkdirAll(testLogsDirectory, 0755)
 	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Error creating Logs Directory: %s", testLogsDirectory))
-	err = os.MkdirAll(testReportDirectory, 0755)
-	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Error creating Reports Directory: %s", testReportDirectory))
+	err = os.MkdirAll(*config.ReportOutputDir, 0755)
+	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Error creating Reports Directory: %s", *config.ReportOutputDir))
 	var newPipelineClient func() (*apiserver.PipelineClient, error)
 	var newRunClient func() (*apiserver.RunClient, error)
 	var newExperimentClient func() (*apiserver.ExperimentClient, error)
@@ -170,20 +169,21 @@ var _ = ReportAfterSuite("Generate filtered JUnit report", func(report Report) {
 	filtered := report
 	filteredSpecs := make([]types.SpecReport, 0, len(report.SpecReports))
 	for _, spec := range report.SpecReports {
-		if spec.State == types.SpecStateSkipped &&
-			(spec.Failure.Message == "" || strings.Contains(spec.Failure.Message, constants.FilteredTests)) ||
-			spec.LeafNodeType.Is(types.NodeTypesForSuiteLevelNodes) {
+		if (spec.State == types.SpecStateSkipped &&
+			(spec.Failure.Message == "" || strings.Contains(spec.Failure.Message, constants.FilteredTests))) ||
+			spec.LeafNodeType.Is(types.NodeTypesForSuiteLevelNodes) ||
+			spec.State == types.SpecStatePending {
 			continue
 		}
 		filteredSpecs = append(filteredSpecs, spec)
 	}
 	filtered.SpecReports = filteredSpecs
 
-	junitPath := filepath.Join(testReportDirectory, junitReportFilename)
+	junitPath := filepath.Join(*config.ReportOutputDir, junitReportFilename)
 	err := reporters.GenerateJUnitReportWithConfig(filtered, junitPath, reporters.JunitReportConfig{})
 	Expect(err).NotTo(HaveOccurred(), "Failed to generate filtered JUnit report")
 
-	jsonPath := filepath.Join(testReportDirectory, jsonReportFilename)
+	jsonPath := filepath.Join(*config.ReportOutputDir, jsonReportFilename)
 	err = reporters.GenerateJSONReport(filtered, jsonPath)
 	Expect(err).NotTo(HaveOccurred(), "Failed to generate filtered JSON report")
 })
