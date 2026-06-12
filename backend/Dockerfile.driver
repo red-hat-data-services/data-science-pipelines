@@ -44,8 +44,6 @@ RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TAR
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
-ENV GODEBUG=fips140=auto
-
 WORKDIR /bin
 
 COPY --from=builder /bin/driver /bin/driver
@@ -53,7 +51,7 @@ RUN chmod +x /bin/driver
 
 USER 65534
 
-ENTRYPOINT ["/bin/driver"]
+ENTRYPOINT ["/bin/fips-wrapper.sh", "/bin/driver"]
 
 LABEL name="ds-pipelines-driver" \
       summary="DSP Driver"

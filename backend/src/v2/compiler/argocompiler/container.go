@@ -49,9 +49,9 @@ const (
 	// this is to avoid hardcoding releases in code here.
 	DefaultLauncherImage     = "ghcr.io/kubeflow/kfp-launcher:latest"
 	LauncherCommandEnvVar    = "V2_LAUNCHER_COMMAND"
-	DefaultLauncherCommand   = "launcher-v2"
+	DefaultLauncherCommand   = "/bin/fips-wrapper.sh launcher-v2"
 	DefaultDriverImage       = "ghcr.io/kubeflow/kfp-driver:latest"
-	DefaultDriverCommand     = "driver"
+	DefaultDriverCommand     = "/bin/fips-wrapper.sh driver"
 	DriverCommandEnvVar      = "V2_DRIVER_COMMAND"
 	PipelineRunAsUserEnvVar  = "PIPELINE_RUN_AS_USER"
 	PipelineLogLevelEnvVar   = "PIPELINE_LOG_LEVEL"
