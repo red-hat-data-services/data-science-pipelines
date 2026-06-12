@@ -67,3 +67,5 @@ var (
 var (
 	MLflowEnabled = flag.Bool("mlflowEnabled", false, "Whether MLflow is deployed and available for integration tests")
 )
+
+var ReportOutputDir = flag.String("reportOutputDir", "reports", "Directory for JUnit and JSON test reports")
