@@ -51,8 +51,8 @@ WORKDIR /bin
 COPY --from=builder /bin/launcher-v2 /bin/launcher-v2
 RUN chmod +x /bin/launcher-v2
 
-RUN printf '#!/bin/sh\nif [ "$(cat /proc/sys/crypto/fips_enabled 2>/dev/null)" = "1" ]; then\n  export GODEBUG=fips140=on\nfi\nexec "$@"\n' > /bin/fips-wrapper.sh && \
-    chmod +x /bin/fips-wrapper.sh
+COPY backend/fips-wrapper.sh /bin/fips-wrapper.sh
+RUN chmod +x /bin/fips-wrapper.sh
 
 USER 65534
 
