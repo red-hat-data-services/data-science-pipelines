@@ -70,7 +70,7 @@ RUN set -e; \
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
-ENV GODEBUG=fips140=auto
+ENV GODEBUG=fips140=on
 
 WORKDIR /bin
 
