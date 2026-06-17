@@ -32,9 +32,13 @@ class DSPADeployer:
         """Generate DataSciencePipelinesApplication YAML."""
         print('📄 Generating DSPA configuration...')
 
+        api_server_image_name = 'apiserver'
+        if 'opendatahub' in self.args.image_path_prefix:
+            api_server_image_name = 'api-server'
+
         api_server_config = {
             'image':
-                'kind-registry:5000/apiserver:ci',
+                f'{self.args.image_registry}/{self.args.image_path_prefix}{api_server_image_name}:{self.args.image_tag}',
             'argoDriverImage':
                 f'{self.args.image_registry}/{self.args.image_path_prefix}driver:{self.args.image_tag}',
             'argoLauncherImage':
@@ -70,11 +74,11 @@ class DSPADeployer:
                 'apiServer': api_server_config,
                 'persistenceAgent': {
                     'image':
-                        'kind-registry:5000/persistenceagent:ci'
+                        f'{self.args.image_registry}/{self.args.image_path_prefix}persistenceagent:{self.args.image_tag}'
                 },
                 'scheduledWorkflow': {
                     'image':
-                        'kind-registry:5000/scheduledworkflow:ci'
+                        f'{self.args.image_registry}/{self.args.image_path_prefix}scheduledworkflow:{self.args.image_tag}'
                 },
                 'mlmd': {
                     'deploy': True,
