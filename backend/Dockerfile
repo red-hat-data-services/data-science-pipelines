@@ -14,43 +14,29 @@
 
 # Build arguments
 ARG SOURCE_CODE=.
-ARG FIPS_ENABLED=1
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1777889793@sha256:1c1259373e6feb4b57de490452379c40888cf6e876154cd2ace17eae9c64a7ea AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3@sha256:d36470d5258da00f618b7aca9bdaab8e05134aa938bd6c42d9bd17d50ed45e76 AS builder
 
-ARG FIPS_ENABLED
 ARG TARGETOS
 ARG TARGETARCH
 
 USER root
-
-RUN dnf install -y cmake clang openssl
 
 COPY ${SOURCE_CODE}/go.mod ./
 COPY ${SOURCE_CODE}/go.sum ./
 COPY ${SOURCE_CODE}/kubernetes_platform/go.mod ./kubernetes_platform/go.mod
 COPY ${SOURCE_CODE}/api/go.mod ./api/go.mod
 
-RUN GO111MODULE=on go mod download
+RUN GOTOOLCHAIN=local GO111MODULE=on go mod download
 
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-# FIPS_ENABLED=1 (default): FIPS-compliant build with strictfipsruntime (requires CGO)
-# FIPS_ENABLED=0: Non-FIPS build for local development on Apple Silicon (pure Go, no CGO)
-RUN if [ "${FIPS_ENABLED}" = "0" ]; then \
-      GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        go build -o /bin/apiserver ./backend/src/apiserver/; \
-    elif [ "${FIPS_ENABLED}" = "1" ]; then \
-      GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-        GOEXPERIMENT=strictfipsruntime \
-        go build -tags strictfipsruntime -o /bin/apiserver ./backend/src/apiserver/; \
-    else \
-      echo "ERROR: FIPS_ENABLED must be '0' or '1', got '${FIPS_ENABLED}'" && exit 1; \
-    fi && \
-    dnf clean all
+RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      GOFIPS140=v1.0.0 \
+      go build -tags no_openssl -o /bin/apiserver ./backend/src/apiserver/
 
 # 2. Compile preloaded pipeline samples
 FROM registry.access.redhat.com/ubi9/python-311 AS compiler
@@ -83,6 +69,8 @@ RUN set -e; \
     done
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
+
+ENV GODEBUG=fips140=on
 
 WORKDIR /bin
 
