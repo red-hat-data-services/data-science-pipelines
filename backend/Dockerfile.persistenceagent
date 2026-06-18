@@ -45,8 +45,6 @@ RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TAR
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 
-ENV GODEBUG=fips140=on
-
 WORKDIR /bin
 
 COPY --from=builder /bin/persistence_agent /bin/persistence_agent
