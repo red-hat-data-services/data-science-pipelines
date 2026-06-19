@@ -40,7 +40,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -108,7 +108,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -154,7 +154,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -212,7 +212,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -271,7 +271,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -305,7 +305,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -336,7 +336,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -369,7 +369,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -402,7 +402,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -420,6 +420,28 @@
         ]
       }
     },
+    "/apis/v2beta1/filters": {
+      "get": {
+        "operationId": "DummyFilterService_GetFilter",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1Filter"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googleRpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "DummyFilterService"
+        ]
+      }
+    },
     "/apis/v2beta1/healthz": {
       "get": {
         "summary": "Get healthz data.",
@@ -434,7 +456,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -457,7 +479,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -516,7 +538,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -550,7 +572,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -583,7 +605,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -622,7 +644,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -664,7 +686,7 @@
                   "description": "Input. A namespace this pipeline belongs to.\nCauses error if user is not authorized to access the specified namespace.\nIf not specified in CreatePipeline, default namespace is used."
                 },
                 "error": {
-                  "$ref": "#/definitions/googlerpcStatus",
+                  "$ref": "#/definitions/googleRpcStatus",
                   "description": "In case any error happens retrieving a pipeline field, only pipeline ID,\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
                 },
                 "tags": {
@@ -675,7 +697,7 @@
                   "description": "Optional. User-defined tags as key-value pairs associated with the pipeline.\nTags can be used to label and categorize pipelines.\nConstraints:\n  - Maximum 20 tags per pipeline.\n  - Both key and value are limited to 63 characters.\n  - Keys cannot be empty and must not contain the '.' character.\nTags can be filtered on when listing pipelines using the filter parameter\nwith keys prefixed by \"tags.\"\n(e.g., filter predicate key \"tags.team\" with string_value \"ml-ops\")."
                 }
               },
-              "title": "Required input. Pipeline object with updated fields.\npipeline_id is required to identify the pipeline.\nMutable fields: display_name, tags."
+              "description": "Required input. Pipeline object with updated fields.\npipeline_id is required to identify the pipeline.\nMutable fields: display_name, tags."
             }
           }
         ],
@@ -698,7 +720,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -729,7 +751,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -768,7 +790,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -827,7 +849,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -868,7 +890,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -906,7 +928,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -945,7 +967,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1002,7 +1024,7 @@
                   "description": "Output. The pipeline spec for the pipeline version."
                 },
                 "error": {
-                  "$ref": "#/definitions/googlerpcStatus",
+                  "$ref": "#/definitions/googleRpcStatus",
                   "description": "In case any error happens retrieving a pipeline version field, only\npipeline ID, pipeline version ID, and the error message are returned.\nClient has the flexibility of choosing how to handle the error.\nThis is especially useful during List() calls."
                 },
                 "tags": {
@@ -1013,7 +1035,7 @@
                   "description": "Optional input field. User-defined tags (key-value pairs) for the pipeline version.\nConstraints:\n  - Maximum 20 tags per pipeline version.\n  - Both keys and values are limited to 63 characters.\n  - Keys cannot be empty and must not contain the '.' character.\nTags are stored in a separate table and can be retrieved via Get and List APIs."
                 }
               },
-              "title": "Required input. Pipeline version object with updated fields.\npipeline_id and pipeline_version_id are required to identify the version.\nMutable fields: display_name, tags."
+              "description": "Required input. Pipeline version object with updated fields.\npipeline_id and pipeline_version_id are required to identify the version.\nMutable fields: display_name, tags."
             }
           }
         ],
@@ -1041,7 +1063,7 @@
           "default": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1109,7 +1131,7 @@
           "default": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1172,7 +1194,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1238,7 +1260,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1272,7 +1294,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1303,7 +1325,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1350,7 +1372,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1383,7 +1405,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1415,7 +1437,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1449,7 +1471,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1483,7 +1505,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1549,7 +1571,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1590,7 +1612,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1628,7 +1650,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1668,7 +1690,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1708,7 +1730,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1748,7 +1770,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1788,7 +1810,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1826,7 +1848,7 @@
           "default": {
             "description": "An unexpected error response.",
             "schema": {
-              "$ref": "#/definitions/googlerpcStatus"
+              "$ref": "#/definitions/googleRpcStatus"
             }
           }
         },
@@ -1874,7 +1896,7 @@
       ],
       "default": "FIELD_UNSPECIFIED"
     },
-    "googlerpcStatus": {
+    "googleRpcStatus": {
       "type": "object",
       "properties": {
         "code": {
@@ -1964,7 +1986,7 @@
           "description": "Last update time of the artifact."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "In case any error happens retrieving an artifact field, only artifact ID\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful when calling ListArtifacts."
         },
         "render_url": {
@@ -2297,7 +2319,7 @@
           "description": "Input. A namespace this pipeline belongs to.\nCauses error if user is not authorized to access the specified namespace.\nIf not specified in CreatePipeline, default namespace is used."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "In case any error happens retrieving a pipeline field, only pipeline ID,\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
         },
         "tags": {
@@ -2350,7 +2372,7 @@
           "description": "Output. The pipeline spec for the pipeline version."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "In case any error happens retrieving a pipeline version field, only\npipeline ID, pipeline version ID, and the error message are returned. \nClient has the flexibility of choosing how to handle the error. \nThis is especially useful during List() calls."
         },
         "tags": {
@@ -2529,7 +2551,7 @@
           "$ref": "#/definitions/v2beta1RecurringRunStatus"
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "In case any error happens retrieving a recurring run field, only recurring run ID\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
         },
         "no_catchup": {
@@ -2704,7 +2726,7 @@
           "description": "Execution id of the corresponding entry in ML metadata store."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "The error that occurred during task execution.\nOnly populated when the task is in FAILED or CANCELED state."
         },
         "inputs": {
@@ -2868,7 +2890,7 @@
           "description": "Output. Runtime state of a run."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "In case any error happens retrieving a run field, only run ID\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
         },
         "run_details": {
@@ -2966,7 +2988,7 @@
           "description": "The state of a runtime instance."
         },
         "error": {
-          "$ref": "#/definitions/googlerpcStatus",
+          "$ref": "#/definitions/googleRpcStatus",
           "description": "The error that occurred during the state. May be set when the state is\nany of the non-final states (PENDING/RUNNING/CANCELING) or FAILED state.\nIf the state is FAILED, the error here is final and not going to be\nretried. If the state is a non-final state, the error indicates that a\nsystem-error being retried."
         }
       },
