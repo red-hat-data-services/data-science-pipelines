@@ -56,7 +56,7 @@ on:
       - '!**/OWNERS'
 
 concurrency:
-  group: api-tests-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -68,14 +68,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k8s_version: [ "v1.34.0" ]
+        k8s_version: [ "v1.35.0" ]
         cache_enabled: [ "true", "false" ]
         proxy: [ "false" ]
         argo_version: [ "v3.7.3", "v3.5.14", "v4.0.4" ]
         pipeline_store: [ "database" ]
         pod_to_pod_tls_enabled: [ "true" ]
         include:
-          - k8s_version: "v1.29.2"
+          - k8s_version: "v1.31.14"
+            cache_enabled: "true"
+            argo_version: "v3.7.3"
+          - k8s_version: "v1.31.14"
+            cache_enabled: "true"
+            argo_version: "v3.5.14"
+          - k8s_version: "v1.31.14"
+            cache_enabled: "true"
+            argo_version: "v4.0.4"
+          - k8s_version: "v1.35.0"
             cache_enabled: "true"
             pod_to_pod_tls_enabled: "true"
           - k8s_version: "v1.29.2"
@@ -179,13 +188,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k8s_version: [ "v1.34.0", "v1.29.2" ]
+        k8s_version: [ "v1.35.0", "v1.31.14" ]
         cache_enabled: [ "true" ]
         uploadPipelinesWithKubernetesClient: [ "true", "false" ]
         pipeline_store: [ "kubernetes" ]
         pod_to_pod_tls_enabled: [ "true" ]
         include:
-          - k8s_version: "v1.34.0"
+          - k8s_version: "v1.35.0"
             cache_enabled: "true"
             pipeline_store: "kubernetes"
             pod_to_pod_tls_enabled: "false"
@@ -246,7 +255,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k8s_version: [ "v1.34.0"]
+        k8s_version: [ "v1.35.0"]
         cache_enabled: [ "true", "false" ]
         multi_user: [ "true" ]
       fail-fast: false # So that failure in 1 type of parameterized job does not cause other jobs to terminate prematurely

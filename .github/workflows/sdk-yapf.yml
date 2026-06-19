@@ -25,6 +25,11 @@ on:
       - 'test/presubmit-yapf-sdk.sh'
       - '.github/workflows/sdk-yapf.yml'
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   yapf-sdk:
     runs-on: ubuntu-latest
