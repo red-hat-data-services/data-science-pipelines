@@ -19,6 +19,7 @@ __version__ = "2.16.1"
 # import apis into sdk package
 from kfp_server_api.api.artifact_service_api import ArtifactServiceApi
 from kfp_server_api.api.auth_service_api import AuthServiceApi
+from kfp_server_api.api.dummy_filter_service_api import DummyFilterServiceApi
 from kfp_server_api.api.experiment_service_api import ExperimentServiceApi
 from kfp_server_api.api.healthz_service_api import HealthzServiceApi
 from kfp_server_api.api.pipeline_service_api import PipelineServiceApi
@@ -40,7 +41,9 @@ from kfp_server_api.exceptions import ApiException
 from kfp_server_api.models.authorize_request_resources import AuthorizeRequestResources
 from kfp_server_api.models.authorize_request_verb import AuthorizeRequestVerb
 from kfp_server_api.models.get_artifact_request_artifact_view import GetArtifactRequestArtifactView
-from kfp_server_api.models.googlerpc_status import GooglerpcStatus
+from kfp_server_api.models.google_rpc_status import GoogleRpcStatus
+from kfp_server_api.models.inline_object import InlineObject
+from kfp_server_api.models.inline_object1 import InlineObject1
 from kfp_server_api.models.list_artifact_request_field import ListArtifactRequestField
 from kfp_server_api.models.metadata_value_render_type import MetadataValueRenderType
 from kfp_server_api.models.pipeline_task_detail_child_task import PipelineTaskDetailChildTask
