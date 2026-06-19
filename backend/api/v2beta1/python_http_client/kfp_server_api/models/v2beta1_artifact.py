@@ -43,7 +43,7 @@ class V2beta1Artifact(object):
         'artifact_size': 'str',
         'created_at': 'datetime',
         'last_updated_at': 'datetime',
-        'error': 'GooglerpcStatus',
+        'error': 'GoogleRpcStatus',
         'render_url': 'str'
     }
 
@@ -339,7 +339,7 @@ class V2beta1Artifact(object):
 
 
         :return: The error of this V2beta1Artifact.  # noqa: E501
-        :rtype: GooglerpcStatus
+        :rtype: GoogleRpcStatus
         """
         return self._error
 
@@ -349,7 +349,7 @@ class V2beta1Artifact(object):
 
 
         :param error: The error of this V2beta1Artifact.  # noqa: E501
-        :type error: GooglerpcStatus
+        :type error: GoogleRpcStatus
         """
 
         self._error = error
