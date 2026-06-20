@@ -13,6 +13,7 @@
 // limitations under the License.
 
 // Launcher command for Kubeflow Pipelines v2.
+
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/client_manager"
 	"github.com/kubeflow/pipelines/backend/src/v2/component"
 	"github.com/kubeflow/pipelines/backend/src/v2/config"
+	"github.com/spf13/viper"
 )
 
 // TODO: use https://github.com/spf13/cobra as a framework to create more complex CLI tools with subcommands.
@@ -147,4 +149,5 @@ func init() {
 	flag.Set("logtostderr", "true")
 	// Change the WARNING to INFO level for debugging.
 	flag.Set("stderrthreshold", "WARNING")
+	viper.AutomaticEnv()
 }
