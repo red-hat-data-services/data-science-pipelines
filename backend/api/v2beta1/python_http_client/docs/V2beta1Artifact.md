@@ -13,7 +13,7 @@ Name | Type | Description | Notes
 **artifact_size** | **str** | The size of the artifact in bytes. If the artifact does not exist in object store (e.g. Metrics) then this is omitted. | [optional] 
 **created_at** | **datetime** | Creation time of the artifact. | [optional] 
 **last_updated_at** | **datetime** | Last update time of the artifact. | [optional] 
-**error** | [**GooglerpcStatus**](GooglerpcStatus.md) |  | [optional] 
+**error** | [**GoogleRpcStatus**](GoogleRpcStatus.md) |  | [optional] 
 **render_url** | **str** | Optional Output. Specifies a signed URL that can be used to render this Artifact directly from its store. | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

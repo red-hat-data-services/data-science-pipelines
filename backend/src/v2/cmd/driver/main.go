@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package main
 
 import (
@@ -21,10 +22,12 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/spf13/viper"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	"github.com/kubeflow/pipelines/backend/src/v2/common/plugins"
 
 	"os"
 	"path/filepath"
@@ -38,6 +41,8 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/v2/driver"
 	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/kubeflow/pipelines/kubernetes_platform/go/kubernetesplatform"
+
+	_ "github.com/kubeflow/pipelines/backend/src/v2/common/plugins/all"
 )
 
 const (
@@ -102,6 +107,7 @@ var (
 
 func main() {
 	flag.Parse()
+	initConfig()
 
 	glog.Infof("Setting log level to: '%s'", *logLevel)
 	err := flag.Set("v", *logLevel)
@@ -212,6 +218,11 @@ func drive() (err error) {
 	if err != nil {
 		return err
 	}
+	// pluginDispatcher executes task-level plugin lifecycle hooks
+	pluginDispatcher, err := plugins.GetPluginDispatcher()
+	if err != nil {
+		glog.Errorf("Failed to initialize plugin dispatcher: %v", err)
+	}
 	options := driver.Options{
 		PipelineName:            *pipelineName,
 		RunID:                   *runID,
@@ -234,6 +245,7 @@ func drive() (err error) {
 		MLPipelineTLSEnabled:    *mlPipelineTLSEnabled,
 		MLMDTLSEnabled:          *metadataTLSEnabled,
 		CaCertPath:              *caCertPath,
+		PluginDispatcher:        pluginDispatcher,
 	}
 	var execution *driver.Execution
 	var driverErr error
@@ -381,4 +393,8 @@ func writeFile(path string, data []byte) (err error) {
 
 func newMlmdClient(mlmdServerAddress string, mlmdServerPort string, tlsCfg *tls.Config) (*metadata.Client, error) {
 	return metadata.NewClient(mlmdServerAddress, mlmdServerPort, tlsCfg)
+}
+
+func initConfig() {
+	viper.AutomaticEnv()
 }
