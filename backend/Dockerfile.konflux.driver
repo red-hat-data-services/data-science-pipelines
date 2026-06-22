@@ -16,7 +16,7 @@
 ARG SOURCE_CODE=.
 
 # Use ubi9/go-toolset as base image
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.2-1777889793@sha256:1c1259373e6feb4b57de490452379c40888cf6e876154cd2ace17eae9c64a7ea as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3@sha256:d36470d5258da00f618b7aca9bdaab8e05134aa938bd6c42d9bd17d50ed45e76 as builder
 
 
 ## Build args to be used at this step
@@ -32,7 +32,7 @@ COPY ${SOURCE_CODE}/go.sum ./
 # Copy the source
 COPY ${SOURCE_CODE}/ ./
 
-RUN GO111MODULE=on CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} GOEXPERIMENT=strictfipsruntime go build -tags 'netgo strictfipsruntime'  -o /bin/driver ./backend/src/v2/cmd/driver/*.go
+RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} GOFIPS140=v1.0.0 go build -tags netgo,no_openssl -o /bin/driver ./backend/src/v2/cmd/driver/*.go
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal@sha256:1bc3c5c15720506a0cf48adfdf8b623dfe704377e007d7bbae8d14876392ca6a
 
