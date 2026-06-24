@@ -38,6 +38,10 @@ MLFLOW_CA_CONFIGMAP="mlflow-ca-cert"
 KFP_CA_BUNDLE_DIR="/kfp/certs"
 KFP_CA_BUNDLE_PATH="${KFP_CA_BUNDLE_DIR}/ca.crt"
 
+MLFLOW_CA_CONFIGMAP="mlflow-ca-cert"
+KFP_CA_BUNDLE_DIR="/kfp/certs"
+KFP_CA_BUNDLE_PATH="${KFP_CA_BUNDLE_DIR}/ca.crt"
+
 echo "Services in ${MLFLOW_NAMESPACE} namespace:"
 kubectl get svc -n "$MLFLOW_NAMESPACE" --no-headers
 MLFLOW_SVC=$(kubectl get svc -n "$MLFLOW_NAMESPACE" --no-headers -o custom-columns=":metadata.name" | grep -i mlflow | head -1)
