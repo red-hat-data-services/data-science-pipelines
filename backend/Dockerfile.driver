@@ -48,3 +48,5 @@ ENTRYPOINT ["/bin/driver"]
 
 LABEL name="ds-pipelines-driver" \
       summary="DSP Driver"
+
+# CI noop: same backend Dockerfiles as PR #1435 (CVE bump); no functional change — infra vs PR comparison.
