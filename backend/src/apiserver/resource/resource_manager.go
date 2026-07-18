@@ -547,6 +547,10 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 		return nil, util.NewInternalServerError(util.NewInvalidInputError("Namespace cannot be empty when creating an Argo workflow. Check if you have specified POD_NAMESPACE or try adding the parent namespace to the request"), "Failed to create a run due to empty namespace")
 	}
 
+	if err := r.authorizeServiceAccount(ctx, executionSpec.ServiceAccount(), k8sNamespace); err != nil {
+		return nil, util.Wrap(err, "Failed to create a run due to service account authorization error")
+	}
+
 	if util.IsV1PipelinesBlocked(k8sNamespace) && tmpl.GetTemplateType() == template.V1 {
 		return nil, util.NewInvalidInputError("Namespace %s is not allowed to run v1 pipelines. Please migrate to using KFP V2 pipelines.", k8sNamespace)
 	}
@@ -1118,8 +1122,6 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 			return nil, util.NewInternalServerError(err, "Failed to create a recurring run with an invalid pipeline spec manifest")
 		}
 
-		// TODO(gkcalat): consider changing the flow. Other resource UUIDs are assigned by their respective stores (DB).
-		// Convert modelJob into scheduledWorkflow.
 		scheduledWorkflow, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
 		if err != nil {
 			return nil, util.Wrap(err, "Failed to create a recurring run during scheduled workflow creation")
@@ -1140,7 +1142,7 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 			return nil, util.Wrap(err, "Failed to fetch a template with an invalid pipeline spec manifest")
 		}
 
-		_, err = tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
+		validatedScheduledWorkflow, err := tmpl.ScheduledWorkflow(job, r.getOwnerReferences())
 		if err != nil {
 			return nil, util.Wrap(err, "Failed to validate the input parameters on the latest pipeline version")
 		}
@@ -1158,6 +1160,14 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 		scheduledWorkflow.Spec.Workflow = &scheduledworkflow.WorkflowResource{
 			Parameters: parameters, PipelineRoot: job.PipelineRoot,
 		}
+		scheduledWorkflow.Spec.ServiceAccount = validatedScheduledWorkflow.Spec.ServiceAccount
+	}
+	resolvedJobServiceAccount := scheduledWorkflow.Spec.ServiceAccount
+	if resolvedJobServiceAccount == "" {
+		resolvedJobServiceAccount = job.ServiceAccount
+	}
+	if err := r.authorizeServiceAccount(ctx, resolvedJobServiceAccount, k8sNamespace); err != nil {
+		return nil, util.Wrap(err, "Failed to create a recurring run due to service account authorization error")
 	}
 
 	if tmpl != nil && util.IsV1PipelinesBlocked(k8sNamespace) && tmpl.GetTemplateType() == template.V1 {
@@ -1873,6 +1883,25 @@ func (r *ResourceManager) GetPipelineVersionTemplate(pipelineVersionId string) (
 	} else {
 		return bytes, nil
 	}
+}
+
+func (r *ResourceManager) authorizeServiceAccount(ctx context.Context, serviceAccount, namespace string) error {
+	if serviceAccount == "" {
+		return nil
+	}
+	if err := common.ValidateServiceAccountAllowList(serviceAccount); err != nil {
+		return util.NewInvalidInputError("%s", err)
+	}
+	defaultServiceAccount := common.GetStringConfigWithDefault(common.DefaultPipelineRunnerServiceAccountFlag, common.DefaultPipelineRunnerServiceAccount)
+	if serviceAccount == defaultServiceAccount {
+		return nil
+	}
+	return r.IsAuthorized(ctx, &authorizationv1.ResourceAttributes{
+		Verb:      common.RbacResourceVerbUse,
+		Namespace: namespace,
+		Resource:  "serviceaccounts",
+		Name:      serviceAccount,
+	})
 }
 
 // Verifies whether the user identity, which is contained in the context object,
