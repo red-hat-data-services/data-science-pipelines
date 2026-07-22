@@ -1732,3 +1732,12 @@ func TestRetryRun(t *testing.T) {
 
 	_, err = server.RetryRun(nil, &apiv2beta1.RetryRunRequest{RunId: run.RunId})
 }
+
+func TestRetryRunV1(t *testing.T) {
+	clients, manager, run := initWithOneTimeRun(t)
+	defer clients.Close()
+	server := createRunServerV1(manager)
+	_, err := server.RetryRunV1(context.Background(), &apiv1beta1.RetryRunRequest{RunId: run.UUID})
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not allowed to run v1 pipelines")
+}
