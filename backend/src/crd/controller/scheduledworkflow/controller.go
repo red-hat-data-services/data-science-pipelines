@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -521,6 +522,10 @@ func (c *Controller) submitNewWorkflowIfNotAlreadySubmitted(
 
 	// If the workflow is not found, we need to create it.
 	if swf.Spec.Workflow != nil && swf.Spec.Workflow.Spec != nil {
+		if shouldEnforceV1Block(swf) {
+			return false, "", fmt.Errorf(
+				"namespace %s is not allowed to run v1 pipelines; please migrate to KFP v2 pipelines", swf.Namespace)
+		}
 		newWorkflow, err := swf.NewWorkflow(nextScheduledEpoch, nowEpoch)
 		if err != nil {
 			return false, "", err
@@ -607,4 +612,65 @@ func (c *Controller) updateStatus(
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
 	return c.swfClient.Update(ctx, swf.Namespace, swfCopy)
+}
+
+func shouldEnforceV1Block(swf *util.ScheduledWorkflow) bool {
+	if swf == nil || !commonutil.IsV1PipelinesBlocked(swf.Namespace) {
+		return false
+	}
+
+	if swf.Spec.Workflow == nil || swf.Spec.Workflow.Spec == nil {
+		return false
+	}
+
+	var raw []byte
+	switch v := swf.Spec.Workflow.Spec.(type) {
+	case string:
+		raw = []byte(v)
+	default:
+		var err error
+		raw, err = json.Marshal(v)
+		if err != nil {
+			log.Warnf("Failed to marshal SWF spec to JSON: %v", err)
+			return true
+		}
+	}
+
+	var wf workflowapi.Workflow
+	if err := json.Unmarshal(raw, &wf); err != nil {
+		log.Warnf("Failed to unmarshal SWF spec to JSON: %v", err)
+		return true
+	}
+
+	if hasV2PipelineMarker(wf.GetLabels(), wf.GetAnnotations()) {
+		return false
+	}
+
+	if hasV2ComponentMarker(wf.Spec.PodMetadata) {
+		return false
+	}
+
+	var workflowSpec workflowapi.WorkflowSpec
+	if err := json.Unmarshal(raw, &workflowSpec); err != nil {
+		log.Warnf("Failed to unmarshal SWF spec to JSON: %v", err)
+		return true
+	}
+
+	if hasV2ComponentMarker(workflowSpec.PodMetadata) {
+		return false
+	}
+
+	return true
+}
+
+func hasV2ComponentMarker(podMetadata *workflowapi.Metadata) bool {
+	if podMetadata == nil {
+		return false
+	}
+
+	return podMetadata.Labels[util.V2Key] == "true" || podMetadata.Annotations[util.V2Key] == "true"
+}
+
+func hasV2PipelineMarker(labels, annotations map[string]string) bool {
+	return labels[util.V2PipelineKey] == "true" || annotations[util.V2PipelineKey] == "true"
 }
