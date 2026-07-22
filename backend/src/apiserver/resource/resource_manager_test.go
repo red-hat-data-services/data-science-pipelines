@@ -58,6 +58,7 @@ func strPtr(i string) *string {
 
 func initEnvVars() {
 	viper.Set(common.PodNamespace, "ns1")
+	viper.Set("V1_ALLOWED_NAMESPACES", "ns1")
 	proxy.InitializeConfigWithEmptyForTests()
 }
 
