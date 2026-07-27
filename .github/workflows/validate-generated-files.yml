@@ -14,10 +14,13 @@ on:
       - 'backend/api/**/go_client/**'
       - 'backend/api/**/python_http_client/**'
       - 'backend/api/**/swagger/**'
+      - 'api/Makefile'
       - 'api/**/*.proto'
       - 'api/**/*.go'
+      - 'kubernetes_platform/Makefile'
       - 'kubernetes_platform/**/*.proto'
       - 'kubernetes_platform/**/*.go'
+      - 'sdk/Makefile'
       - 'backend/src/crd/kubernetes/**/*.go'
       - 'manifests/kustomize/base/crds/*.yaml'
       - '!**/*.md'
@@ -26,6 +29,8 @@ on:
 jobs:
   validate-generated-files:
     runs-on: ubuntu-latest
+    env:
+      USE_PREBUILT_IMAGE: false
     strategy:
       fail-fast: false
 
@@ -41,6 +46,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
+
+      - name: Set up Docker Buildx with caching
+        shell: bash
+        run: bash ./.github/resources/scripts/setup-buildx-with-retry.sh
 
       - name: Install protobuf dependencies & kfp-pipeline-spec
         id: install-protobuf-deps
