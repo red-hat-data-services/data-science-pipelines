@@ -40,7 +40,6 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/list"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/model"
-	apiserverPlugins "github.com/kubeflow/pipelines/backend/src/apiserver/plugins"
 	apiservermlflow "github.com/kubeflow/pipelines/backend/src/apiserver/plugins/mlflow"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/storage"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/template"
@@ -2538,7 +2537,7 @@ func TestCreateRun_WithMLflowPlugin(t *testing.T) {
 	defer store.Close()
 
 	// Build a run with plugins_input that triggers MLflow integration.
-	pluginsInput := `{"MLflow":{"experiment_name":"Default"}}`
+	pluginsInput := `{"mlflow":{"experiment_name":"Default"}}`
 	pluginsInputLT := model.LargeText(pluginsInput)
 	apiRun := &model.Run{
 		DisplayName: "mlflow-test-run",
@@ -2569,14 +2568,14 @@ func TestCreateRun_WithMLflowPlugin(t *testing.T) {
 	assert.Contains(t, string(*storedRun.PluginsOutputString), "mlflow-exp-1")
 
 	// Parse and verify the plugin output structure.
-	outputs, err := apiserverPlugins.DeserializePluginsOutput(storedRun.PluginsOutputString)
+	outputs, err := apiservermlflow.DeserializePluginsOutput(storedRun.PluginsOutputString)
 	require.NoError(t, err)
-	output := outputs["MLflow"]
+	output := outputs[apiservermlflow.PluginName]
 	require.NotNil(t, output)
 	assert.Equal(t, apiv2beta1.PluginState_PLUGIN_SUCCEEDED, output.State)
-	assert.Equal(t, "mlflow-exp-1", output.Entries[apiserverPlugins.EntryExperimentID].Value.GetStringValue())
-	assert.Equal(t, "mlflow-parent-run-1", output.Entries[apiserverPlugins.EntryRootRunID].Value.GetStringValue())
-	assert.Contains(t, output.Entries[apiserverPlugins.EntryRunURL].Value.GetStringValue(), "mlflow-parent-run-1")
+	assert.Equal(t, "mlflow-exp-1", output.Entries[apiservermlflow.EntryExperimentID].Value.GetStringValue())
+	assert.Equal(t, "mlflow-parent-run-1", output.Entries[apiservermlflow.EntryRootRunID].Value.GetStringValue())
+	assert.Contains(t, output.Entries[apiservermlflow.EntryRunURL].Value.GetStringValue(), "mlflow-parent-run-1")
 
 }
 
@@ -2806,12 +2805,6 @@ func TestRetryRun_ReopensMLflowParentAndFailedNestedRuns(t *testing.T) {
 	var updateCalls []updateCall
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/2.0/mlflow/experiments/get-by-name":
-			// Return experiment for initial run creation
-			_, _ = w.Write([]byte(`{"experiment":{"experiment_id":"exp-1","name":"Default"}}`))
-		case "/api/2.0/mlflow/runs/create":
-			// Return a temporary parent run ID for initial run creation
-			_, _ = w.Write([]byte(`{"run":{"info":{"run_id":"temp-parent-run"}}}`))
 		case "/api/2.0/mlflow/runs/update":
 			defer r.Body.Close()
 			var payload struct {
@@ -2850,7 +2843,7 @@ func TestRetryRun_ReopensMLflowParentAndFailedNestedRuns(t *testing.T) {
 	runWithPluginOutput, err := manager.GetRun(runDetail.UUID)
 	require.NoError(t, err)
 	mlflowOutput := apiservermlflow.SuccessfulPluginOutput("exp-1", "exp-1", "parent-run-1", server.URL+"/runs/parent-run-1", server.URL)
-	lt, err := apiserverPlugins.SerializePluginsOutput(map[string]*apiv2beta1.PluginOutput{"MLflow": mlflowOutput})
+	lt, err := apiservermlflow.SerializePluginsOutput(map[string]*apiv2beta1.PluginOutput{apiservermlflow.PluginName: mlflowOutput})
 	require.NoError(t, err)
 	runWithPluginOutput.PluginsOutputString = lt
 	require.NoError(t, manager.runStore.UpdateRun(runWithPluginOutput))
@@ -2865,9 +2858,9 @@ func TestRetryRun_ReopensMLflowParentAndFailedNestedRuns(t *testing.T) {
 
 	updatedRun, err := manager.GetRun(runDetail.UUID)
 	require.NoError(t, err)
-	updatedOutputs, err := apiserverPlugins.DeserializePluginsOutput(updatedRun.PluginsOutputString)
+	updatedOutputs, err := apiservermlflow.DeserializePluginsOutput(updatedRun.PluginsOutputString)
 	require.NoError(t, err)
-	updatedOutput := updatedOutputs["MLflow"]
+	updatedOutput := updatedOutputs[apiservermlflow.PluginName]
 	require.NotNil(t, updatedOutput)
 	assert.Equal(t, apiv2beta1.PluginState_PLUGIN_SUCCEEDED, updatedOutput.State)
 	assert.Equal(t, "", updatedOutput.StateMessage)
@@ -3750,7 +3743,7 @@ func TestReportWorkflow_WithMLflowOnRunEnd(t *testing.T) {
 	defer store.Close()
 
 	// Pre-populate PluginsOutputString to simulate a prior OnBeforeRunCreation success.
-	pluginsOutputJSON := `{"MLflow":{"entries":{"experiment_id":{"value":"exp-1"},"root_run_id":{"value":"parent-run-1"}},"state":"PLUGIN_SUCCEEDED"}}`
+	pluginsOutputJSON := `{"mlflow":{"entries":{"experiment_id":{"value":"exp-1"},"root_run_id":{"value":"parent-run-1"}},"state":"PLUGIN_SUCCEEDED"}}`
 	pluginsOutput := model.LargeText(pluginsOutputJSON)
 	apiRun := &model.Run{
 		DisplayName: "mlflow-run",

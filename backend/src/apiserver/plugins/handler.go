@@ -51,9 +51,6 @@ type PersistedRun struct {
 
 // RunPluginHandler defines the generic run-level plugin lifecycle hooks
 type RunPluginHandler interface {
-	Name() string
-	GetGlobalPluginConfig() (*PluginConfig, error)
-	OnBeforeRunCreation(ctx context.Context, run *PendingRun, config *PluginConfig) (*apiv2beta1.PluginOutput, map[string]string, error)
-	HandleRetry(ctx context.Context, run *PersistedRun, config *PluginConfig) error
-	OnRunEnd(ctx context.Context, run *PersistedRun, config *PluginConfig) error
+	OnBeforeRunCreation(ctx context.Context, run *PendingRun, config interface{}) (*apiv2beta1.PluginOutput, error)
+	OnRunEnd(ctx context.Context, run *PersistedRun, config interface{}) error
 }
