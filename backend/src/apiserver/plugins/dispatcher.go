@@ -121,7 +121,7 @@ func (d *RunPluginDispatcherImpl) OnBeforeRunCreation(ctx context.Context, run *
 			}
 			pluginOutput, pluginRuntimeEnv, pluginErr := handler.OnBeforeRunCreation(pluginCtx, run, runPluginCfg)
 			if pluginErr != nil {
-				return pluginErr
+				glog.Warningf("%s OnBeforeRunCreation failed for run %q (run creation will continue): %v", handler.Name(), run.RunID, pluginErr)
 			}
 			if pluginOutput == nil {
 				return nil
