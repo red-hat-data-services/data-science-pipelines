@@ -205,6 +205,7 @@ jobs:
         if: ${{ steps.configure.outcome == 'success' }}
         with:
           cache_enabled: ${{ matrix.cache_enabled }}
+          proxy: ${{ matrix.proxy }}
           test_directory: ${{ env.E2E_TESTS_DIR }}
           test_label: ${{ steps.configure.outputs.TEST_LABEL }}
           num_parallel_nodes: ${{ steps.configure.outputs.NUMBER_OF_NODES }}
