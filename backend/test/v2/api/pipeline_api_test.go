@@ -195,16 +195,22 @@ var _ = Describe("List Pipelines API Tests >", Label(constants.POSITIVE, constan
 			pipelineSpecFilePath := filepath.Join(pipelineFilesRootDir, pipelineDir, helloWorldPipelineFileName)
 
 			name1 := testContext.Pipeline.PipelineGeneratedName + "-aaa"
-			uploadPipelineAndVerify(pipelineSpecFilePath, &name1, nil)
+			createdPipeline1 := uploadPipelineAndVerify(pipelineSpecFilePath, &name1, nil)
 			name2 := testContext.Pipeline.PipelineGeneratedName + "-zzz"
-			uploadPipelineAndVerify(pipelineSpecFilePath, &name2, nil)
+			createdPipeline2 := uploadPipelineAndVerify(pipelineSpecFilePath, &name2, nil)
 
 			sortBy := "name asc"
 			params := newListPipelinesParams()
 			params.SortBy = &sortBy
-			pipelines, _, _, err := pipelineClient.List(params)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(pipelines)).To(BeNumerically(">=", 2))
+			var pipelines []*pipeline_model.V2beta1Pipeline
+			Eventually(func() (int, error) {
+				listedPipelines, _, _, err := pipelineClient.List(params)
+				if err != nil {
+					return 0, err
+				}
+				pipelines = filterPipelinesByID(listedPipelines, createdPipeline1.PipelineID, createdPipeline2.PipelineID)
+				return len(pipelines), nil
+			}, informerSyncTimeout, informerSyncInterval).Should(Equal(2))
 			for i := 1; i < len(pipelines); i++ {
 				cur := strings.ToLower(pipelines[i].Name)
 				prev := strings.ToLower(pipelines[i-1].Name)
