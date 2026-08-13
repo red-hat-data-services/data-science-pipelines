@@ -227,6 +227,29 @@ jobs:
           pod_to_pod_tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
           skip_operator_deployment: ${{ env.SKIP_OPERATOR_DEPLOYMENT }}
 
+      - name: Configure Cluster CA Cert for TLS-Enabled Tests
+        shell: bash
+        if: ${{ matrix.pod_to_pod_tls_enabled == 'true'}}
+        run: |
+          if [ "${{ env.SKIP_OPERATOR_DEPLOYMENT }}" == "false" ]; then
+            kubectl get configmap openshift-service-ca.crt -n kubeflow -o jsonpath='{.data.service-ca\.crt}' > "${{ github.workspace }}/ca.crt"
+          else
+            echo "Waiting for cert-manager to issue kfp-api-tls-cert secret..."
+            for i in $(seq 1 12); do
+              if kubectl get secret kfp-api-tls-cert -n kubeflow > /dev/null 2>&1; then
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "ERROR: kfp-api-tls-cert secret not found after 2 minutes"
+                exit 1
+              fi
+              echo "  Attempt $i/12: secret not ready yet, waiting 10s..."
+              sleep 10
+            done
+            kubectl get secret kfp-api-tls-cert -n kubeflow -o jsonpath='{.data.ca\.crt}' | base64 -d > "${{ github.workspace }}/ca.crt"
+          fi
+          echo "CA_CERT_PATH=${{ github.workspace }}/ca.crt" >> "$GITHUB_ENV"
+
       - name: Run Tests
         uses: ./.github/actions/test-and-report
         if: ${{ steps.deploy.outcome == 'success' }}
@@ -241,6 +264,7 @@ jobs:
           default_namespace: ${{ env.NAMESPACE }}
           python_version: ${{ env.PYTHON_VERSION }}
           tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
+          ca_cert_path: ${{ env.CA_CERT_PATH }}
           report_name: "K8Native_k8sVersion=${{ matrix.k8s_version }}_cacheEnabled=${{ matrix.cache_enabled }}_uploadPipelinesWithKubernetesClient=${{ matrix.uploadPipelinesWithKubernetesClient }}_pipelineStore=${{ matrix.pipeline_store}}_podToPodTlsEnabled=${{ matrix.pod_to_pod_tls_enabled }}"
           # Deployment metadata from deploy action
           deployment_name: ${{ steps.deploy.outputs.deployment_name }}
