@@ -109,10 +109,16 @@ if [ "${PIPELINES_STORE}" == "kubernetes" ] || [ "${POD_TO_POD_TLS_ENABLED}" == 
     echo "Failed to deploy cert-manager."
     exit $EXIT_CODE
   fi
+  echo "DEBUG: Starting cert-manager webhook wait at $(date)"
+  echo "DEBUG: Checking cert-manager pods:"
+  kubectl get pods -n cert-manager
   echo "Waiting for cert-manager webhook to be ready..."
   kubectl wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager
+  echo "DEBUG: Webhook wait completed at $(date)"
   # Give the webhook time to start serving after deployment is available
+  echo "DEBUG: Sleeping 10s for webhook to start serving..."
   sleep 10
+  echo "DEBUG: Webhook setup completed at $(date)"
 fi
 
 
@@ -169,9 +175,15 @@ elif [ "${MULTI_USER}" == "true" ]; then
 fi
 
 
+echo "DEBUG: About to deploy manifests from ${TEST_MANIFESTS}"
+echo "DEBUG: Current time: $(date)"
+echo "DEBUG: Kubectl version: $(kubectl version --client --short)"
+echo "DEBUG: Cluster info: $(kubectl cluster-info | head -1)"
+
 echo "Deploying ${TEST_MANIFESTS}..."
 
 kubectl kustomize --load-restrictor LoadRestrictionsNone "${TEST_MANIFESTS}" | kubectl apply -f - || EXIT_CODE=$?
+echo "DEBUG: Manifest deployment completed with exit code: $EXIT_CODE at $(date)"
 if [[ $EXIT_CODE -ne 0 ]]
 then
   echo "Deploy unsuccessful. Failure applying ${TEST_MANIFESTS}."
@@ -179,7 +191,11 @@ then
 fi
 
 # Check if all pods are running - (10 minutes)
+echo "DEBUG: Starting wait_for_pods at $(date)"
+echo "DEBUG: Current pods before wait:"
+kubectl get pods -n kubeflow
 wait_for_pods || EXIT_CODE=$?
+echo "DEBUG: wait_for_pods completed with exit code: $EXIT_CODE at $(date)"
 if [[ $EXIT_CODE -ne 0 ]]
 then
   echo "Deploy unsuccessful. Not all pods running."
