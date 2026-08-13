@@ -259,6 +259,7 @@ class DSPDeployer:
                     self.infra.deploy_pypi_server()
 
                 self.deploy_dsp_direct()
+                self.infra.setup_service_account_rbac(is_operator=False)
 
             self.infra.forward_port(is_operator=use_operator)
 
