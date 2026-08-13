@@ -34,6 +34,25 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var (
+	informerSyncTimeout  = 30 * time.Second
+	informerSyncInterval = 2 * time.Second
+)
+
+func filterPipelinesByID(pipelines []*pipeline_model.V2beta1Pipeline, pipelineIDs ...string) []*pipeline_model.V2beta1Pipeline {
+	var filtered []*pipeline_model.V2beta1Pipeline
+	idSet := make(map[string]bool)
+	for _, id := range pipelineIDs {
+		idSet[id] = true
+	}
+	for _, pipeline := range pipelines {
+		if idSet[pipeline.PipelineID] {
+			filtered = append(filtered, pipeline)
+		}
+	}
+	return filtered
+}
+
 // toUploadModel converts a pipeline_model.V2beta1Pipeline to the upload_model equivalent
 // for tracking in testContext.Pipeline.CreatedPipelines (used for cleanup).
 func toUploadModel(p *pipeline_model.V2beta1Pipeline) *upload_model.V2beta1Pipeline {
