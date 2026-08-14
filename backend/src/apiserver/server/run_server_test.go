@@ -1647,8 +1647,7 @@ func TestRetryRunV1(t *testing.T) {
 	clients, manager, run := initWithOneTimeRun(t)
 	defer clients.Close()
 	server := createRunServerV1(manager)
-	// RetryRunV1 requires the workflow to be in Failed/Error state, so expect an error.
 	_, err := server.RetryRunV1(context.Background(), &apiv1beta1.RetryRunRequest{RunId: run.UUID})
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Workflow must be Failed/Error to retry")
+	assert.Contains(t, err.Error(), "not allowed to run v1 pipelines")
 }

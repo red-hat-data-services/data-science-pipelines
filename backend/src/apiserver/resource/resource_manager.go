@@ -498,6 +498,15 @@ func (r *ResourceManager) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv
 	if err != nil {
 		return nil, nil, util.Wrap(err, "Failed to create a pipeline and a pipeline version due to template creation error")
 	}
+	if tmpl.GetTemplateType() == template.V1 {
+		ns := p.Namespace
+		if ns == "" {
+			ns = common.GetPodNamespace()
+		}
+		if util.IsV1PipelinesBlocked(ns) {
+			return nil, nil, util.NewInvalidInputError("V1 pipeline specs are not allowed. Please migrate to using KFP V2 pipelines.")
+		}
+	}
 	// Validate pipeline's name in:
 	// 1. pipeline spec for v2 pipelines and v2-compatible pipeline must comply with MLMD requirements
 	// 2. display name must be non-empty
@@ -647,6 +656,11 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 	if k8sNamespace == "" {
 		return nil, util.NewInternalServerError(util.NewInvalidInputError("Namespace cannot be empty when creating an Argo workflow. Check if you have specified POD_NAMESPACE or try adding the parent namespace to the request"), "Failed to create a run due to empty namespace")
 	}
+
+	if util.IsV1PipelinesBlocked(k8sNamespace) && tmpl.GetTemplateType() == template.V1 {
+		return nil, util.NewInvalidInputError("Namespace %s is not allowed to run v1 pipelines. Please migrate to using KFP V2 pipelines.", k8sNamespace)
+	}
+
 	executionSpec.SetExecutionNamespace(k8sNamespace)
 
 	// assign OwnerReference to scheduledworkflow
@@ -990,6 +1004,9 @@ func (r *ResourceManager) RetryRun(ctx context.Context, runId string) error {
 		return util.Wrapf(err, "Failed to retry run %s due to error fetching its namespace", runId)
 	}
 
+	if util.IsV1PipelinesBlocked(namespace) && run.PipelineSpecManifest == "" && run.WorkflowSpecManifest != "" {
+		return util.NewInvalidInputError("Cannot retry run %s: namespace %s is not allowed to run v1 pipelines. Please migrate to using KFP V2 pipelines.", runId, namespace)
+	}
 	if run.RunDetails.WorkflowRuntimeManifest == "" {
 		return util.NewBadRequestError(util.NewInvalidInputError("Workflow manifest cannot be empty"), "Failed to retry run %s due to error fetching workflow manifest", runId)
 	}
@@ -1256,6 +1273,10 @@ func (r *ResourceManager) CreateJob(ctx context.Context, job *model.Job) (*model
 		}
 	}
 
+	if tmpl != nil && util.IsV1PipelinesBlocked(k8sNamespace) && tmpl.GetTemplateType() == template.V1 {
+		return nil, util.NewInvalidInputError("Namespace %s is not allowed to run v1 pipelines. Please migrate to using KFP V2 pipelines.", k8sNamespace)
+	}
+
 	newScheduledWorkflow, err := r.getScheduledWorkflowClient(k8sNamespace).Create(ctx, scheduledWorkflow)
 	if err != nil {
 		if err, ok := err.(net.Error); ok && err.Timeout() {
@@ -1397,6 +1418,20 @@ func (r *ResourceManager) CreateOrUpdateTasks(t []*model.Task, runID string) ([]
 	return tasks, nil
 }
 
+func (r *ResourceManager) validateReportedWorkflowUID(ctx context.Context, execSpec util.ExecutionSpec) error {
+	clusterWorkflow, err := r.getWorkflowClient(execSpec.ExecutionNamespace()).Get(ctx, execSpec.ExecutionName(), v1.GetOptions{})
+	if err != nil {
+		if util.IsNotFound(err) {
+			return nil
+		}
+		return util.NewInternalServerError(err, "Failed to report workflow")
+	}
+	if clusterWorkflow.ExecutionUID() != execSpec.ExecutionUID() {
+		return util.NewInvalidInputError("Failed to report workflow")
+	}
+	return nil
+}
+
 // Reports a workflow CR.
 // This is called to update runs.
 func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec util.ExecutionSpec) (util.ExecutionSpec, error) {
@@ -1411,6 +1446,10 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 	// TODO(gkcalat): consider adding namespace validation to catch mismatch in the namespaces and release resources.
 	if len(execSpec.ExecutionNamespace()) == 0 {
 		return nil, util.NewInvalidInputError("Failed to report a workflow. Namespace is empty")
+	}
+
+	if err := r.validateReportedWorkflowUID(ctx, execSpec); err != nil {
+		return nil, err
 	}
 
 	if execSpec.PersistedFinalState() {
@@ -1850,6 +1889,15 @@ func (r *ResourceManager) CreatePipelineVersion(pv *model.PipelineVersion) (*mod
 	tmpl, err := template.New(pipelineSpecBytes, templateOptions)
 	if err != nil {
 		return nil, util.Wrap(err, "Failed to create a pipeline version due to template creation error")
+	}
+	if tmpl.GetTemplateType() == template.V1 {
+		pipelineNamespace, _ := r.FetchNamespaceFromPipelineId(pipelineId)
+		if pipelineNamespace == "" {
+			pipelineNamespace = common.GetPodNamespace()
+		}
+		if util.IsV1PipelinesBlocked(pipelineNamespace) {
+			return nil, util.NewInvalidInputError("V1 pipeline specs are not allowed. Please migrate to using KFP V2 pipelines.")
+		}
 	}
 	// Validate pipeline's name in:
 	// 1. pipeline spec for v2 pipelines and v2-compatible pipeline must comply with MLMD requirements

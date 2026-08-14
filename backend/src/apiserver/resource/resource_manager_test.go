@@ -58,8 +58,12 @@ func strPtr(i string) *string {
 	return &i
 }
 
+// v1AllowedNamespaces mirrors the unexported constant in backend/src/common/util/v1_support.go.
+const v1AllowedNamespaces = "V1_ALLOWED_NAMESPACES"
+
 func initEnvVars() {
 	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "ns1,kubeflow,user,user1")
 	proxy.InitializeConfigWithEmptyForTests()
 }
 
@@ -441,6 +445,7 @@ func TestCreatePipeline(t *testing.T) {
 	}
 	for _, test := range tt {
 		t.Run(test.msg, func(t *testing.T) {
+			initEnvVars()
 			var pipelineVersion, pv *model.PipelineVersion
 			// setup
 			store := NewFakeClientManagerOrFatalV2()
@@ -844,6 +849,7 @@ func TestResourceManager_CreatePipelineAndPipelineVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			initEnvVars()
 			store := NewFakeClientManagerOrFatalV2()
 			defer store.Close()
 			manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
@@ -995,6 +1001,142 @@ func TestGetPipelineByNameAndNamespaceV1(t *testing.T) {
 			assert.Equal(t, pv, respv)
 		})
 	}
+}
+
+// TestCreatePipelineAndPipelineVersion_V1Blocked verifies that V1 pipeline uploads are blocked
+// when the namespace is not in the allowed list.
+func TestCreatePipelineAndPipelineVersion_V1Blocked(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment - only allow "allowed-ns"
+	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "allowed-ns")
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// Create V1 pipeline in blocked namespace
+	p := &model.Pipeline{
+		Name:        "test-pipeline-v1",
+		Namespace:   "blocked-ns", // Not in allowed list
+		Description: "This is a test",
+	}
+
+	// Create V1 pipeline version using testWorkflow (V1 Argo Workflow)
+	pv := createPipelineVersion(
+		"",    // empty pipeline ID - will be set by CreatePipelineAndPipelineVersion
+		"v1",  // version name
+		"V1 test version",
+		"",    // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",    // no URI
+		p.Namespace,
+	)
+
+	_, _, actualError := manager.CreatePipelineAndPipelineVersion(p, pv)
+
+	// Verify V1 blocking error
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+	assert.Contains(t, actualError.Error(), "Please migrate to using KFP V2 pipelines")
+}
+
+// TestCreatePipelineAndPipelineVersion_V1Blocked_PodNamespaceFallback verifies V1 blocking
+// when pipeline namespace is empty and falls back to PodNamespace.
+func TestCreatePipelineAndPipelineVersion_V1Blocked_PodNamespaceFallback(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment - PodNamespace not in allowed list
+	viper.Set(common.PodNamespace, "pod-ns")
+	viper.Set(v1AllowedNamespaces, "allowed-ns")
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// Create V1 pipeline with empty namespace (triggers fallback)
+	p := &model.Pipeline{
+		Name:        "test-pipeline-v1",
+		Namespace:   "", // Empty - will fallback to PodNamespace
+		Description: "This is a test",
+	}
+
+	// Create V1 pipeline version using testWorkflow (V1 Argo Workflow)
+	pv := createPipelineVersion(
+		"",    // empty pipeline ID
+		"v1",  // version name
+		"V1 test version",
+		"",    // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",    // no URI
+		"",    // empty namespace - will trigger fallback
+	)
+
+	_, _, actualError := manager.CreatePipelineAndPipelineVersion(p, pv)
+
+	// Verify V1 blocking error (PodNamespace "pod-ns" not in "allowed-ns")
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+}
+
+// TestCreatePipelineVersion_V1Blocked verifies that V1 pipeline version uploads are blocked
+// when the pipeline's namespace is not in the allowed list.
+func TestCreatePipelineVersion_V1Blocked(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment
+	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "allowed-ns") // Only allow "allowed-ns"
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// First create a pipeline in a blocked namespace using V2
+	p := &model.Pipeline{
+		Name:        "test-pipeline",
+		Namespace:   "blocked-ns", // Not in allowed list
+		Description: "This is a test",
+	}
+
+	// Create V2 pipeline version for initial creation (V2 not blocked)
+	v2pv := createPipelineVersion(
+		"",    // empty pipeline ID
+		"v2",  // version name
+		"V2 test version",
+		"",    // no URL
+		v2SpecHelloWorld, // V2 pipeline spec
+		"",    // no URI
+		p.Namespace,
+	)
+
+	createdPipeline, _, err := manager.CreatePipelineAndPipelineVersion(p, v2pv)
+	require.Nil(t, err)
+
+	// Now try to add a V1 version to this pipeline
+	v1pv := createPipelineVersion(
+		createdPipeline.UUID, // pipeline ID
+		"v1",                 // version name
+		"V1 test version",
+		"",                   // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",                   // no URI
+		p.Namespace,
+	)
+
+	_, actualError := manager.CreatePipelineVersion(v1pv)
+
+	// Verify V1 version blocking error
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+	assert.Contains(t, actualError.Error(), "Please migrate to using KFP V2 pipelines")
 }
 
 // Tests GetPipelineLatestTemplate (from PipelineSpec)
@@ -3129,7 +3271,7 @@ func TestReportWorkflowResource_WorkflowCompleted(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: namespace,
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
@@ -3168,7 +3310,7 @@ func TestReportWorkflowResource_WorkflowCompleted_FinalStatePersisted(t *testing
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: "ns1",
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID, util.LabelKeyWorkflowPersistedFinalState: "true"},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
@@ -3199,19 +3341,37 @@ func TestReportWorkflowResource_WorkflowCompleted_FinalStatePersisted_DeleteFail
 	store, manager, run := initWithOneTimeRun(t)
 	manager.execClient = client.NewFakeExecClientWithBadWorkflow()
 	defer store.Close()
-	// report workflow
+	// UID validation rejects before Delete is reached because the bad client
+	// returns a non-NotFound error on Get.
 	workflow := util.NewWorkflow(&v1alpha1.Workflow{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: "ns1",
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID, util.LabelKeyWorkflowPersistedFinalState: "true"},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
 	})
 	_, err := manager.ReportWorkflowResource(context.Background(), workflow)
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "failed to delete workflow")
+	assert.Contains(t, err.Error(), "Failed to report workflow")
+}
+
+func TestReportWorkflowResource_UIDMismatch_Rejected(t *testing.T) {
+	store, manager, run := initWithOneTimeRun(t)
+	defer store.Close()
+	workflow := util.NewWorkflow(&v1alpha1.Workflow{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      run.K8SName,
+			Namespace: "ns1",
+			UID:       "forged-uid",
+			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID},
+		},
+		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
+	})
+	_, err := manager.ReportWorkflowResource(context.Background(), workflow)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Failed to report workflow")
 }
 
 func TestReportScheduledWorkflowResource_Success(t *testing.T) {
