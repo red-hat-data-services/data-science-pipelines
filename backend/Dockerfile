@@ -41,7 +41,7 @@ ARG TARGETOS TARGETARCH
 
 USER root
 RUN dnf install -y python3-setuptools jq
-RUN wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py
+RUN wget https://bootstrap.pypa.io/pip/3.9/get-pip.py -O get-pip.py && python3 get-pip.py
 COPY backend/requirements.txt .
 RUN python3 -m pip install -r requirements.txt --no-cache-dir
 
