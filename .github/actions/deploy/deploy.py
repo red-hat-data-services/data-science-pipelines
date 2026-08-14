@@ -276,17 +276,19 @@ class DSPDeployer:
                 shutil.rmtree(self.temp_dir)
 
     def _patch_v1_allowed_namespaces(self):
-        """Allow V1 pipelines in the deployment namespace for CI tests."""
+        """Allow V1 pipelines and configure allowed service accounts in the deployment namespace for CI tests."""
         namespace = self.deployment_namespace or self.args.namespace
         env_value = json.dumps({
             'name': 'V1_ALLOWED_NAMESPACES', 'value': namespace
         })
         print(f'🔧 Setting V1_ALLOWED_NAMESPACES={namespace}')
+        print(f'🔧 Setting ALLOWEDSERVICEACCOUNTS=ml-pipeline')
         for deploy in ['ml-pipeline', 'ml-pipeline-scheduledworkflow']:
             self.deployment_manager.run_command([
                 'kubectl', 'set', 'env',
                 f'deployment/{deploy}',
                 f'V1_ALLOWED_NAMESPACES={namespace}',
+                'ALLOWEDSERVICEACCOUNTS=ml-pipeline',
                 '-n', namespace
             ])
         for deploy in ['ml-pipeline', 'ml-pipeline-scheduledworkflow']:
