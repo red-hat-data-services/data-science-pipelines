@@ -30,6 +30,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	commonutil "github.com/kubeflow/pipelines/backend/src/common/util"
 	scheduledworkflow "github.com/kubeflow/pipelines/backend/src/crd/pkg/apis/scheduledworkflow/v1beta1"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -716,8 +717,31 @@ func TestSetDefaultServiceAccount_EmptyFallsToConfig(t *testing.T) {
 	proxy.InitializeConfigWithEmptyForTests()
 	wf := util.NewWorkflow(unmarshalWf(awfTemplate))
 	setDefaultServiceAccount(wf, "")
-	// When no SA is set on workflow and empty is passed, it falls back to config default.
 	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_DefaultSAPreserved(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(awfTemplate))
+	setDefaultServiceAccount(wf, common.DefaultPipelineRunnerServiceAccount)
+	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_WorkflowEmbeddedSAPreserved(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(awfTemplate))
+	wf.SetServiceAccount("custom-sa")
+	setDefaultServiceAccount(wf, "")
+	assert.Equal(t, "custom-sa", wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_ConfiguredDefaultApplied(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	viper.Set(common.DefaultPipelineRunnerServiceAccountFlag, "my-custom-runner")
+	defer viper.Set(common.DefaultPipelineRunnerServiceAccountFlag, "")
+	wf := util.NewWorkflow(unmarshalWf(awfTemplate))
+	setDefaultServiceAccount(wf, "")
+	assert.Equal(t, "my-custom-runner", wf.ServiceAccount())
 }
 
 // --- validatePipelineJobInputs tests ---
