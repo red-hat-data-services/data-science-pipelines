@@ -72,6 +72,20 @@ while [ "$#" -gt 0 ]; do
       POD_TO_POD_TLS_ENABLED=true
       shift
       ;;
+    --storage)
+      shift
+      if [[ -n "$1" ]]; then
+        STORAGE_BACKEND="$1"
+        shift
+      else
+        echo "ERROR: --storage requires an argument"
+        exit 1
+      fi
+      ;;
+    *)
+      echo "WARNING: Unknown argument '$1', skipping."
+      shift
+      ;;
   esac
 done
 
