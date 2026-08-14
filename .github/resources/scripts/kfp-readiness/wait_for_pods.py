@@ -79,14 +79,11 @@ def print_get_pods():
 
 
 def check_pods(calm_time=10, timeout=900, retries_after_ready=5):
-    logging.info(f"DEBUG: Starting pod check at {time.time()}, timeout={timeout}s")
     start_time = time.time()
     stable_count = 0
     previous_statuses = {}
 
     while time.time() - start_time < timeout:
-        elapsed = time.time() - start_time
-        logging.info(f"DEBUG: Pod check iteration - elapsed: {elapsed:.1f}s/{timeout}s")
         current_statuses = get_pod_statuses()
 
         logging.info("Checking pod statuses...")
@@ -114,11 +111,6 @@ def check_pods(calm_time=10, timeout=900, retries_after_ready=5):
         logging.info(f"Pods are still stabilizing. Retrying in {calm_time} seconds...\n{pods}")
         time.sleep(calm_time)
     else:
-        logging.error(f"DEBUG: TIMEOUT reached after {timeout}s. Final pod states:")
-        for pod_name, (pod_status, ready, total, waiting_messages) in current_statuses.items():
-            logging.error(f"DEBUG: TIMEOUT - Pod {pod_name}: {pod_status}, {ready}/{total}")
-            for msg in waiting_messages:
-                logging.error(f"DEBUG: TIMEOUT - {msg}")
         log_pods()
 
         raise Exception("Pods did not stabilize within the timeout period.")
