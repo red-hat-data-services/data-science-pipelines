@@ -113,14 +113,6 @@ API definitions in this folder are used to generate [`v1beta1`](https://www.kube
 
 The API generation workflow supports two modes:
 
-<<<<<<< HEAD
-1. Login to GHCR container registry: `echo "<PAT>" | docker login ghcr.io -u <USERNAME> --password-stdin` 
-   * Replace `<PAT>` with a GitHub Personal Access Token (PAT) with the write:packages and `read:packages` scopes, as well as `delete:packages` if needed. 
-1. Update the [Dockerfile](`./Dockerfile`) and build the image by running `docker build -t ghcr.io/kubeflow/kfp-api-generator:$BRANCH .`
-1. Push the new container by running `docker push ghcr.io/kubeflow/kfp-api-generator:$BRANCH`.
-1. Update the `PREBUILT_REMOTE_IMAGE` variable in the [Makefile](./Makefile) to point to your new image.
-1. Similarly, push a new version of the release tools image to `ghcr.io/kubeflow/kfp-release:$BRANCH` and run `make push` in [test/release/Makefile](../../test/release/Makefile).
-=======
 **1. Fast Development (default):** Uses pre-built images
 ```bash
 make generate                           # Uses pre-built image (fast)
@@ -155,4 +147,3 @@ The `build-tools-images.yml` CI workflow automatically publishes API generator i
 1. Update the [Dockerfile](./Dockerfile) with your changes
 2. The image will be built and published automatically on the next push to a tracked branch
 3. For manual publishing, see the `build-tools-images.yml` workflow for the exact commands
->>>>>>> ac6819303 (ci: build API generator from source in CI to prevent stale files (#13771))

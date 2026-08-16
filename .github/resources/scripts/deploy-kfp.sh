@@ -109,6 +109,10 @@ if [ "${PIPELINES_STORE}" == "kubernetes" ]; then
     echo "Failed to deploy cert-manager."
     exit $EXIT_CODE
   fi
+  echo "Waiting for cert-manager webhook to be ready..."
+  kubectl wait --for=condition=available --timeout=120s deployment/cert-manager-webhook -n cert-manager
+  # Give the webhook time to start serving after deployment is available
+  sleep 10
 fi
 
 

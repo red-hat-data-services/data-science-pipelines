@@ -7,13 +7,8 @@
 
 ### Document metadata
 
-<<<<<<< HEAD
 - Last updated: 2025-09-24
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 16)
-=======
-- Last updated: 2026-07-27
-- Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
->>>>>>> ac6819303 (ci: build API generator from source in CI to prevent stale files (#13771))
 
 ### Maintenance (agents and contributors)
 
@@ -291,18 +286,7 @@ The following files are generated; edit their sources and regenerate:
 - `kubernetes_platform/python/kfp/kubernetes/kubernetes_executor_config_pb2.py`
   - Source: `kubernetes_platform/proto/kubernetes_executor_config.proto`
   - Generate: `make -C kubernetes_platform python` (or `make -C kubernetes_platform python-dev`)
-<<<<<<< HEAD
 - Frontend API clients under `frontend/src/apis` and `frontend/src/apisv2beta1`
-=======
-- Backend API clients under `backend/api/{v1beta1,v2beta1}/go_client`,
-  `backend/api/{v1beta1,v2beta1}/go_http_client`, and the generated Swagger files
-  under `backend/api/{v1beta1,v2beta1}/swagger`
-  - Sources: `backend/api/{v1beta1,v2beta1}/*.proto` and `backend/api/Dockerfile`
-  - Generate: `make -C backend/api API_VERSION=<version> generate` (uses pre-built image, fast)
-  - Source build: `USE_PREBUILT_IMAGE=false make -C backend/api API_VERSION=<version> generate` (accurate)
-  - Legacy target: `make -C backend/api API_VERSION=<version> generate-from-scratch` (always builds from source)
-- Frontend OpenAPI clients under `frontend/src/apis`, `frontend/src/apisv2beta1`, `frontend/server/src/generated/apis`, and `frontend/server/src/generated/apisv2beta1`, with shared runtime/model support under `frontend/src/generated/openapi` and `frontend/server/src/generated/openapi`
->>>>>>> ac6819303 (ci: build API generator from source in CI to prevent stale files (#13771))
   - Sources: Swagger specs under `backend/api/**/swagger/*.json`
   - Generate: `cd frontend && npm run apis` / `npm run apis:v2beta1`
 - Frontend MLMD proto outputs under `frontend/src/third_party/mlmd/generated`
@@ -550,8 +534,7 @@ docformatter --check --recursive sdk/python/ --exclude "compiler_test.py"
 ### Essential commands
 
 - Compile pipeline: `kfp dsl compile --py pipeline.py --output pipeline.yaml`
-- Generate protos: `make -C api python && make -C api golang` (fast with pre-built images)
-- Generate protos (accurate): `USE_PREBUILT_IMAGE=false make -C api python && USE_PREBUILT_IMAGE=false make -C api golang`
+- Generate protos: `make -C api python && make -C api golang`
 - Deploy local cluster (standalone): `make -C backend kind-cluster-agnostic`
 - Deploy local cluster (development) and run the API server in the IDE: `make -C backend dev-kind-cluster`
 - Run SDK tests: `pytest -v sdk/python/kfp`

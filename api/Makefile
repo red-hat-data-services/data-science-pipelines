@@ -75,10 +75,7 @@ ifeq ($(USE_PREBUILT_IMAGE),true)
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python && \
 		    python3 -m pip install --user --break-system-packages -r requirements.txt && \
 		    python3 generate_proto.py && \
-<<<<<<< HEAD
 		    python3 setup.py sdist bdist_wheel --dist-dir ./dist'
-=======
-            python3 setup.py sdist && pip wheel --no-deps dist/*.tar.gz -w dist'
 else
 	$(MAKE) python-from-source
 endif
@@ -94,8 +91,7 @@ python-from-source: ensure-api-generator-image fetch-protos
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python && \
 		    python3 -m pip install --user --break-system-packages -r requirements.txt && \
 		    python3 generate_proto.py && \
-            python3 setup.py sdist && pip wheel --no-deps dist/*.tar.gz -w dist'
->>>>>>> ac6819303 (ci: build API generator from source in CI to prevent stale files (#13771))
+            python3 setup.py sdist bdist_wheel --dist-dir ./dist'
 
 # Build and locally install Python package using editable mode for development.
 .PHONY: python-dev

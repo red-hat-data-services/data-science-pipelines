@@ -20,9 +20,6 @@ REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator
 # Assume the latest API version by default.
 API_VERSION ?= v2beta1
 
-<<<<<<< HEAD
-# Keep in sync with the version used in test/release/Dockerfile.release
-=======
 # Pre-built images for faster development (default: enabled for speed)
 # Set USE_PREBUILT_IMAGE=false when:
 # - Dockerfile dependencies have been updated
@@ -35,7 +32,6 @@ ifneq ($(USE_PREBUILT_IMAGE),false)
 $(error USE_PREBUILT_IMAGE must be 'true' or 'false', got '$(USE_PREBUILT_IMAGE)')
 endif
 endif
->>>>>>> ac6819303 (ci: build API generator from source in CI to prevent stale files (#13771))
 PREBUILT_REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator:master
 RELEASE_IMAGE=ghcr.io/kubeflow/kfp-release:master
 CONTAINER_ENGINE ?= docker
