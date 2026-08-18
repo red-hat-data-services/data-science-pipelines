@@ -1,7 +1,7 @@
 name: KFP E2E Pipeline tests
 env:
   E2E_TESTS_DIR: "./backend/test/end2end"
-  NUMBER_OF_PARALLEL_NODES: 10
+  NUMBER_OF_PARALLEL_NODES: 2
   CLUSTER_NAME: "kfp"
   NAMESPACE: "kubeflow"
   PYTHON_VERSION: "3.9"
