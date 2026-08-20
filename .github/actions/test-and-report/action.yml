@@ -71,6 +71,10 @@ inputs:
     description: "Service account name from deployment (from deploy action)"
     required: false
     default: ""
+  pipeline_runner_service_account_name:
+    description: "Pipeline runner service account for workflow execution (from deploy action)"
+    required: false
+    default: ""
   deployment_mode:
     description: "Deployment mode used - operator or direct (from deploy action)"
     required: false
@@ -122,6 +126,7 @@ runs:
         INPUT_AUTH_TOKEN: ${{ inputs.auth_token }}
         INPUT_MULTI_USER: ${{ inputs.multi_user }}
         INPUT_SERVICE_ACCOUNT_NAME: ${{ inputs.service_account_name }}
+        INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME: ${{ inputs.pipeline_runner_service_account_name }}
         INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME: ${{ inputs.deployment_service_account_name }}
         INPUT_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
         INPUT_DEFAULT_NAMESPACE: ${{ inputs.default_namespace }}
@@ -148,23 +153,33 @@ runs:
           echo "🔍 Auto-detected API URL: $API_URL"
         fi
 
-        # Determine service account name (needed regardless of token source)
-        if [ -n "$INPUT_SERVICE_ACCOUNT_NAME" ]; then
-          SERVICE_ACCOUNT_NAME="$INPUT_SERVICE_ACCOUNT_NAME"
-          echo "ℹ️  Using provided service account: $SERVICE_ACCOUNT_NAME"
-        elif [ -n "$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME" ]; then
+        # Determine service account name for API token generation
+        if [ -n "$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME" ]; then
           SERVICE_ACCOUNT_NAME="$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME"
           echo "🔍 Using deployment service account: $SERVICE_ACCOUNT_NAME"
         else
-          # Fallback based on deployment name
           DEPLOYMENT_NAME="${INPUT_DEPLOYMENT_NAME:-}"
           if [ -n "$DEPLOYMENT_NAME" ]; then
             SERVICE_ACCOUNT_NAME="$DEPLOYMENT_NAME"
             echo "🔍 Using deployment name as service account: $SERVICE_ACCOUNT_NAME"
           else
-            SERVICE_ACCOUNT_NAME="ml-pipeline"  # Final fallback
+            SERVICE_ACCOUNT_NAME="ml-pipeline"
             echo "⚠️  Using fallback service account: $SERVICE_ACCOUNT_NAME"
           fi
+        fi
+
+        # Resolve EXECUTION_SERVICE_ACCOUNT: used for ginkgo -serviceAccountName
+        # (the SA that pipeline runs execute under).
+        # Priority: explicit override > pipeline runner SA > default.
+        if [ -n "$INPUT_SERVICE_ACCOUNT_NAME" ]; then
+          EXECUTION_SERVICE_ACCOUNT="$INPUT_SERVICE_ACCOUNT_NAME"
+          echo "ℹ️  Execution service account (override): $EXECUTION_SERVICE_ACCOUNT"
+        elif [ -n "$INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME" ]; then
+          EXECUTION_SERVICE_ACCOUNT="$INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME"
+          echo "🔍 Execution service account (pipeline runner): $EXECUTION_SERVICE_ACCOUNT"
+        else
+          EXECUTION_SERVICE_ACCOUNT="pipeline-runner"
+          echo "🔍 Execution service account (default): $EXECUTION_SERVICE_ACCOUNT"
         fi
 
         # Use provided token if available, otherwise generate from service account
@@ -210,7 +225,8 @@ runs:
         fi
         echo "API_URL=$API_URL" >> "$GITHUB_OUTPUT"
         echo "API_TOKEN=$API_TOKEN" >> "$GITHUB_OUTPUT"
-        echo "SERVICE_ACCOUNT_NAME=${SERVICE_ACCOUNT_NAME:-${INPUT_SERVICE_ACCOUNT_NAME:-}}" >> "$GITHUB_OUTPUT"
+        echo "SERVICE_ACCOUNT_NAME=$SERVICE_ACCOUNT_NAME" >> "$GITHUB_OUTPUT"
+        echo "EXECUTION_SERVICE_ACCOUNT=$EXECUTION_SERVICE_ACCOUNT" >> "$GITHUB_OUTPUT"
 
     - name: Run Tests
       id: run-tests
@@ -251,7 +267,7 @@ runs:
         REPO_NAME="${{ github.repository }}"
         API_URL="${{ steps.configure-api.outputs.API_URL }}"
         AUTH_TOKEN="${{ steps.configure-api.outputs.API_TOKEN }}"
-        SERVICE_ACCOUNT_NAME="${{ steps.configure-api.outputs.SERVICE_ACCOUNT_NAME }}"
+        SERVICE_ACCOUNT_NAME="${{ steps.configure-api.outputs.EXECUTION_SERVICE_ACCOUNT }}"
         BASE_IMAGE_FLAG=""
         if [ -n "${{ inputs.base_image }}" ]; then
           BASE_IMAGE_FLAG="-baseImage=${{ inputs.base_image }}"
