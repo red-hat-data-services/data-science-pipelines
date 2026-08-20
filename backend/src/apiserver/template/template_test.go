@@ -671,7 +671,7 @@ func TestNewV2SpecTemplate_EmptyInput(t *testing.T) {
 }
 
 func TestNewV2SpecTemplate_InvalidYAML(t *testing.T) {
-	_, err := NewV2SpecTemplate([]byte("not: [valid yaml"), false)
+	_, err := NewV2SpecTemplate([]byte("- this is a list, not a mapping"), false)
 	assert.NotNil(t, err)
 }
 
@@ -992,4 +992,3 @@ func TestNewGenericScheduledWorkflow(t *testing.T) {
 	assert.NotNil(t, swf.Spec.PeriodicSchedule)
 	assert.Equal(t, int64(120), swf.Spec.PeriodicSchedule.IntervalSecond)
 }
-

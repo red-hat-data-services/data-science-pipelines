@@ -17,9 +17,7 @@ package template
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -76,8 +74,9 @@ func isV2Spec(template []byte) bool {
 		var value map[string]interface{}
 
 		err := decoder.Decode(&value)
-		// Break at end of file
-		if errors.Is(err, io.EOF) {
+		// Break at end of file or on decode errors. yaml.v3 can return a
+		// non-EOF error forever for malformed input, so never continue on err.
+		if err != nil {
 			break
 		}
 		if value == nil {
