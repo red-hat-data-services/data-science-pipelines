@@ -6,3 +6,4 @@ resources:
 
 patches:
   - path: apiserver-env.yaml
+  - path: scheduledworkflow-env.yaml

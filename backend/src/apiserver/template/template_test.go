@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/config/proxy"
 
 	"github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
@@ -29,6 +30,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	commonutil "github.com/kubeflow/pipelines/backend/src/common/util"
 	scheduledworkflow "github.com/kubeflow/pipelines/backend/src/crd/pkg/apis/scheduledworkflow/v1beta1"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -364,3 +366,44 @@ func TestBytes_V2(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, templateV2Spec, newTemplateV2Spec)
 }
+
+// --- setDefaultServiceAccount tests ---
+
+func TestSetDefaultServiceAccount_ExplicitAccount(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(template))
+	setDefaultServiceAccount(wf, "my-sa")
+	assert.Equal(t, "my-sa", wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_EmptyFallsToConfig(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(template))
+	setDefaultServiceAccount(wf, "")
+	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_DefaultSAPreserved(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(template))
+	setDefaultServiceAccount(wf, common.DefaultPipelineRunnerServiceAccount)
+	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_WorkflowEmbeddedSAPreserved(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	wf := util.NewWorkflow(unmarshalWf(template))
+	wf.SetServiceAccount("custom-sa")
+	setDefaultServiceAccount(wf, "")
+	assert.Equal(t, "custom-sa", wf.ServiceAccount())
+}
+
+func TestSetDefaultServiceAccount_ConfiguredDefaultApplied(t *testing.T) {
+	proxy.InitializeConfigWithEmptyForTests()
+	viper.Set(common.DefaultPipelineRunnerServiceAccountFlag, "my-custom-runner")
+	defer viper.Set(common.DefaultPipelineRunnerServiceAccountFlag, "")
+	wf := util.NewWorkflow(unmarshalWf(template))
+	setDefaultServiceAccount(wf, "")
+	assert.Equal(t, "my-custom-runner", wf.ServiceAccount())
+}
+
