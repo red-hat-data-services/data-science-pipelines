@@ -137,9 +137,7 @@ func (t *V2Spec) ScheduledWorkflow(modelJob *model.Job, ownerReferences []metav1
 	if modelJob.Namespace != "" {
 		executionSpec.SetExecutionNamespace(modelJob.Namespace)
 	}
-	if executionSpec.ServiceAccount() == "" {
-		setDefaultServiceAccount(executionSpec, modelJob.ServiceAccount)
-	}
+	setDefaultServiceAccount(executionSpec, modelJob.ServiceAccount)
 	// Disable istio sidecar injection if not specified
 	executionSpec.SetAnnotationsToAllTemplatesIfKeyNotExist(util.AnnotationKeyIstioSidecarInject, util.AnnotationValueIstioSidecarInjectDisabled)
 	parameters, err := StringMapToCRDParameters(modelJob.RuntimeConfig.Parameters)
@@ -177,11 +175,11 @@ func NewV2SpecTemplate(template []byte, cacheDisabled bool) (*V2Spec, error) {
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		if value == nil {
-			continue
-		}
 		if err != nil {
 			return nil, util.NewInvalidInputErrorWithDetails(ErrorInvalidPipelineSpec, fmt.Sprintf("unable to decode yaml document: %s", err.Error()))
+		}
+		if value == nil {
+			continue
 		}
 		valueBytes, err := goyaml.Marshal(&value)
 		if err != nil {

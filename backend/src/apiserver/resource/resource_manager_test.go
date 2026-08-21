@@ -43,6 +43,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -56,8 +58,12 @@ func strPtr(i string) *string {
 	return &i
 }
 
+// v1AllowedNamespaces mirrors the unexported constant in backend/src/common/util/v1_support.go.
+const v1AllowedNamespaces = "V1_ALLOWED_NAMESPACES"
+
 func initEnvVars() {
 	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "ns1,kubeflow,user,user1")
 	proxy.InitializeConfigWithEmptyForTests()
 }
 
@@ -435,6 +441,7 @@ func TestCreatePipeline(t *testing.T) {
 	}
 	for _, test := range tt {
 		t.Run(test.msg, func(t *testing.T) {
+			initEnvVars()
 			var pipelineVersion, pv *model.PipelineVersion
 			// setup
 			store := NewFakeClientManagerOrFatalV2()
@@ -838,6 +845,7 @@ func TestResourceManager_CreatePipelineAndPipelineVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			initEnvVars()
 			store := NewFakeClientManagerOrFatalV2()
 			defer store.Close()
 			manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
@@ -989,6 +997,142 @@ func TestGetPipelineByNameAndNamespaceV1(t *testing.T) {
 			assert.Equal(t, pv, respv)
 		})
 	}
+}
+
+// TestCreatePipelineAndPipelineVersion_V1Blocked verifies that V1 pipeline uploads are blocked
+// when the namespace is not in the allowed list.
+func TestCreatePipelineAndPipelineVersion_V1Blocked(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment - only allow "allowed-ns"
+	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "allowed-ns")
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// Create V1 pipeline in blocked namespace
+	p := &model.Pipeline{
+		Name:        "test-pipeline-v1",
+		Namespace:   "blocked-ns", // Not in allowed list
+		Description: "This is a test",
+	}
+
+	// Create V1 pipeline version using testWorkflow (V1 Argo Workflow)
+	pv := createPipelineVersion(
+		"",    // empty pipeline ID - will be set by CreatePipelineAndPipelineVersion
+		"v1",  // version name
+		"V1 test version",
+		"",    // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",    // no URI
+		p.Namespace,
+	)
+
+	_, _, actualError := manager.CreatePipelineAndPipelineVersion(p, pv)
+
+	// Verify V1 blocking error
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+	assert.Contains(t, actualError.Error(), "Please migrate to using KFP V2 pipelines")
+}
+
+// TestCreatePipelineAndPipelineVersion_V1Blocked_PodNamespaceFallback verifies V1 blocking
+// when pipeline namespace is empty and falls back to PodNamespace.
+func TestCreatePipelineAndPipelineVersion_V1Blocked_PodNamespaceFallback(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment - PodNamespace not in allowed list
+	viper.Set(common.PodNamespace, "pod-ns")
+	viper.Set(v1AllowedNamespaces, "allowed-ns")
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// Create V1 pipeline with empty namespace (triggers fallback)
+	p := &model.Pipeline{
+		Name:        "test-pipeline-v1",
+		Namespace:   "", // Empty - will fallback to PodNamespace
+		Description: "This is a test",
+	}
+
+	// Create V1 pipeline version using testWorkflow (V1 Argo Workflow)
+	pv := createPipelineVersion(
+		"",    // empty pipeline ID
+		"v1",  // version name
+		"V1 test version",
+		"",    // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",    // no URI
+		"",    // empty namespace - will trigger fallback
+	)
+
+	_, _, actualError := manager.CreatePipelineAndPipelineVersion(p, pv)
+
+	// Verify V1 blocking error (PodNamespace "pod-ns" not in "allowed-ns")
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+}
+
+// TestCreatePipelineVersion_V1Blocked verifies that V1 pipeline version uploads are blocked
+// when the pipeline's namespace is not in the allowed list.
+func TestCreatePipelineVersion_V1Blocked(t *testing.T) {
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	// Set up environment
+	viper.Set(common.PodNamespace, "ns1")
+	viper.Set(v1AllowedNamespaces, "allowed-ns") // Only allow "allowed-ns"
+	defer func() {
+		viper.Set(common.PodNamespace, nil)
+		viper.Set(v1AllowedNamespaces, nil)
+	}()
+
+	// First create a pipeline in a blocked namespace using V2
+	p := &model.Pipeline{
+		Name:        "test-pipeline",
+		Namespace:   "blocked-ns", // Not in allowed list
+		Description: "This is a test",
+	}
+
+	// Create V2 pipeline version for initial creation (V2 not blocked)
+	v2pv := createPipelineVersion(
+		"",    // empty pipeline ID
+		"v2",  // version name
+		"V2 test version",
+		"",    // no URL
+		v2SpecHelloWorld, // V2 pipeline spec
+		"",    // no URI
+		p.Namespace,
+	)
+
+	createdPipeline, _, err := manager.CreatePipelineAndPipelineVersion(p, v2pv)
+	require.Nil(t, err)
+
+	// Now try to add a V1 version to this pipeline
+	v1pv := createPipelineVersion(
+		createdPipeline.UUID, // pipeline ID
+		"v1",                 // version name
+		"V1 test version",
+		"",                   // no URL
+		testWorkflow.ToStringForStore(), // V1 Argo Workflow spec
+		"",                   // no URI
+		p.Namespace,
+	)
+
+	_, actualError := manager.CreatePipelineVersion(v1pv)
+
+	// Verify V1 version blocking error
+	assert.NotNil(t, actualError)
+	assert.Contains(t, actualError.Error(), "V1 pipeline specs are not allowed")
+	assert.Contains(t, actualError.Error(), "Please migrate to using KFP V2 pipelines")
 }
 
 // Tests GetPipelineLatestTemplate (from PipelineSpec)
@@ -1871,6 +2015,8 @@ func TestCreateRun_ThroughWorkflowSpecSameManifest(t *testing.T) {
 }
 
 func TestCreateRun_ThroughPipelineVersion(t *testing.T) {
+	viper.Set(common.AllowedServiceAccountsFlag, "sa1")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
 	// Create experiment, pipeline, and pipeline version.
 	store, manager, experiment, pipeline, _ := initWithExperimentAndPipeline(t)
 	defer store.Close()
@@ -1950,6 +2096,8 @@ func TestCreateRun_ThroughPipelineVersion(t *testing.T) {
 }
 
 func TestCreateRun_ThroughPipelineIdAndPipelineVersion(t *testing.T) {
+	viper.Set(common.AllowedServiceAccountsFlag, "sa1")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
 	// Create experiment, pipeline, and pipeline version.
 	store, manager, experiment, pipeline, _ := initWithExperimentAndPipeline(t)
 	defer store.Close()
@@ -2986,7 +3134,7 @@ func TestReportWorkflowResource_WorkflowCompleted(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: namespace,
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
@@ -3025,7 +3173,7 @@ func TestReportWorkflowResource_WorkflowCompleted_FinalStatePersisted(t *testing
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: "ns1",
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID, util.LabelKeyWorkflowPersistedFinalState: "true"},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
@@ -3056,19 +3204,37 @@ func TestReportWorkflowResource_WorkflowCompleted_FinalStatePersisted_DeleteFail
 	store, manager, run := initWithOneTimeRun(t)
 	manager.execClient = client.NewFakeExecClientWithBadWorkflow()
 	defer store.Close()
-	// report workflow
+	// UID validation rejects before Delete is reached because the bad client
+	// returns a non-NotFound error on Get.
 	workflow := util.NewWorkflow(&v1alpha1.Workflow{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      run.K8SName,
 			Namespace: "ns1",
-			UID:       types.UID(run.UUID),
+			UID:       testWorkflow.UID,
 			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID, util.LabelKeyWorkflowPersistedFinalState: "true"},
 		},
 		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
 	})
 	_, err := manager.ReportWorkflowResource(context.Background(), workflow)
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "failed to delete workflow")
+	assert.Contains(t, err.Error(), "Failed to report workflow")
+}
+
+func TestReportWorkflowResource_UIDMismatch_Rejected(t *testing.T) {
+	store, manager, run := initWithOneTimeRun(t)
+	defer store.Close()
+	workflow := util.NewWorkflow(&v1alpha1.Workflow{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      run.K8SName,
+			Namespace: "ns1",
+			UID:       "forged-uid",
+			Labels:    map[string]string{util.LabelKeyWorkflowRunId: run.UUID},
+		},
+		Status: v1alpha1.WorkflowStatus{Phase: v1alpha1.WorkflowFailed},
+	})
+	_, err := manager.ReportWorkflowResource(context.Background(), workflow)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Failed to report workflow")
 }
 
 func TestReportScheduledWorkflowResource_Success(t *testing.T) {
@@ -4211,3 +4377,464 @@ root:
 schemaVersion: 2.1.0
 sdkVersion: kfp-1.6.5
 `
+
+// --- ServiceAccount SAR authorization tests ---
+
+func multiUserContext() context.Context {
+	md := metadata.New(map[string]string{common.GoogleIAPUserIdentityHeader: common.GoogleIAPUserIdentityPrefix + "user@google.com"})
+	return metadata.NewIncomingContext(context.Background(), md)
+}
+
+func initWithExperimentAndUnauthorizedSAR(t *testing.T) (*FakeClientManager, *ResourceManager, *model.Experiment) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	store.SubjectAccessReviewClientFake = client.NewFakeSubjectAccessReviewClientUnauthorized()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+	apiExperiment := &model.Experiment{Name: "e1", Namespace: "ns1"}
+	experiment, err := manager.CreateExperiment(apiExperiment)
+	assert.Nil(t, err)
+	return store, manager, experiment
+}
+
+func TestCreateRun_ServiceAccountSAR_MultiUserUnauthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	_, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Unauthorized")
+}
+
+func TestCreateRun_ServiceAccountSAR_MultiUserAuthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperiment(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	run, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.Nil(t, err)
+	assert.Equal(t, "custom-sa", run.ServiceAccount)
+}
+
+func TestCreateRun_ServiceAccountSAR_SingleUserSkipped(t *testing.T) {
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	run, err := manager.CreateRun(context.Background(), apiRun)
+	require.Nil(t, err)
+	assert.Equal(t, "custom-sa", run.ServiceAccount)
+}
+
+func TestCreateRun_ServiceAccountSAR_DefaultSASkipped(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId: experiment.UUID,
+	}
+	run, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.Nil(t, err)
+	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, run.ServiceAccount)
+}
+
+func TestCreateJob_ServiceAccountSAR_MultiUserUnauthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	_, err := manager.CreateJob(multiUserContext(), job)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Unauthorized")
+}
+
+func TestCreateJob_ServiceAccountSAR_MultiUserAuthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperiment(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	createdJob, err := manager.CreateJob(multiUserContext(), job)
+	require.Nil(t, err)
+	assert.Equal(t, "custom-sa", createdJob.ServiceAccount)
+}
+
+func TestCreateJob_ServiceAccountSAR_SingleUserSkipped(t *testing.T) {
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	createdJob, err := manager.CreateJob(context.Background(), job)
+	require.Nil(t, err)
+	assert.Equal(t, "custom-sa", createdJob.ServiceAccount)
+}
+
+func TestCreateJob_ServiceAccountSAR_DefaultSASkipped(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+		},
+		ExperimentId: experiment.UUID,
+	}
+	createdJob, err := manager.CreateJob(multiUserContext(), job)
+	assert.Nil(t, err)
+	assert.NotNil(t, createdJob)
+}
+
+// --- V2 pipeline spec SAR tests ---
+
+func TestCreateRun_ServiceAccountSAR_V2Spec_MultiUserUnauthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			PipelineSpecManifest: v2SpecHelloWorld,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: "{\"text\":\"world\"}",
+			},
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	_, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Unauthorized")
+}
+
+func TestCreateJob_ServiceAccountSAR_V2Spec_MultiUserUnauthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			PipelineSpecManifest: v2SpecHelloWorld,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters:   "{\"text\":\"world\"}",
+				PipelineRoot: "job-1-root",
+			},
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	_, err := manager.CreateJob(multiUserContext(), job)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Unauthorized")
+}
+
+// --- Confused deputy: privileged SA name ---
+
+func TestCreateRun_ServiceAccountSAR_ConfusedDeputy_PrivilegedSA(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+
+	_, manager, experiment := initWithExperimentAndUnauthorizedSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "ds-pipeline-dspa",
+	}
+	_, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not allowed")
+}
+
+// --- SAR ResourceAttributes verification ---
+
+type capturingSARClient struct {
+	lastReview *authzv1.SubjectAccessReview
+}
+
+func (c *capturingSARClient) Create(_ context.Context, sar *authzv1.SubjectAccessReview, _ v1.CreateOptions) (*authzv1.SubjectAccessReview, error) {
+	c.lastReview = sar
+	return &authzv1.SubjectAccessReview{Status: authzv1.SubjectAccessReviewStatus{Allowed: true}}, nil
+}
+
+func initWithExperimentAndCapturingSAR(t *testing.T) (*FakeClientManager, *ResourceManager, *model.Experiment, *capturingSARClient) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	capturingClient := &capturingSARClient{}
+	store.SubjectAccessReviewClientFake = capturingClient
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+	apiExperiment := &model.Experiment{Name: "e1", Namespace: "ns1"}
+	experiment, err := manager.CreateExperiment(apiExperiment)
+	assert.Nil(t, err)
+	return store, manager, experiment, capturingClient
+}
+
+func TestCreateRun_ServiceAccountSAR_CorrectResourceAttributes(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "my-special-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment, capturingClient := initWithExperimentAndCapturingSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "my-special-sa",
+	}
+	_, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.Nil(t, err)
+
+	require.NotNil(t, capturingClient.lastReview)
+	attrs := capturingClient.lastReview.Spec.ResourceAttributes
+	assert.Equal(t, common.RbacResourceVerbUse, attrs.Verb)
+	assert.Equal(t, "serviceaccounts", attrs.Resource)
+	assert.Equal(t, "my-special-sa", attrs.Name)
+	assert.Equal(t, "ns1", attrs.Namespace)
+}
+
+// --- CreateJob allowlist bypass tests (review findings 1 & 2) ---
+
+func TestCreateJob_PipelineIdOnly_DisallowedSA_Rejected(t *testing.T) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	experiment, err := manager.CreateExperiment(&model.Experiment{Name: "e1", Namespace: "ns1"})
+	require.Nil(t, err)
+
+	p, _ := manager.CreatePipeline(createPipeline("p1", "", "ns1"))
+	pv := createPipelineVersion(
+		p.UUID, "p1/v1", "v1", "",
+		v2SpecHelloWorld,
+		"", "ns1",
+	)
+	_, err = manager.CreatePipelineVersion(pv)
+	require.Nil(t, err)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			PipelineId: p.UUID,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: "{\"text\":\"world\"}",
+			},
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "disallowed-sa",
+	}
+	_, err = manager.CreateJob(context.Background(), job)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "not allowed")
+}
+
+func TestCreateJob_PipelineIdOnly_AllowedSA_Succeeds(t *testing.T) {
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	experiment, err := manager.CreateExperiment(&model.Experiment{Name: "e1", Namespace: "ns1"})
+	require.Nil(t, err)
+
+	p, _ := manager.CreatePipeline(createPipeline("p1", "", "ns1"))
+	pv := createPipelineVersion(p.UUID, "p1/v1", "v1", "", v2SpecHelloWorld, "", "ns1")
+	_, err = manager.CreatePipelineVersion(pv)
+	require.Nil(t, err)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			PipelineId: p.UUID,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: "{\"text\":\"world\"}",
+			},
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	createdJob, err := manager.CreateJob(context.Background(), job)
+	require.Nil(t, err)
+	assert.Equal(t, "custom-sa", createdJob.ServiceAccount)
+}
+
+func TestCreateJob_PipelineIdOnly_SAR_MultiUserUnauthorized(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "custom-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	store.SubjectAccessReviewClientFake = client.NewFakeSubjectAccessReviewClientUnauthorized()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	experiment, err := manager.CreateExperiment(&model.Experiment{Name: "e1", Namespace: "ns1"})
+	require.Nil(t, err)
+
+	p, _ := manager.CreatePipeline(createPipeline("p1", "", "ns1"))
+	pv := createPipelineVersion(p.UUID, "p1/v1", "v1", "", v2SpecHelloWorld, "", "ns1")
+	_, err = manager.CreatePipelineVersion(pv)
+	require.Nil(t, err)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			PipelineId: p.UUID,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: "{\"text\":\"world\"}",
+			},
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "custom-sa",
+	}
+	_, err = manager.CreateJob(multiUserContext(), job)
+	require.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Unauthorized")
+}
+
+func TestCreateJob_ServiceAccountSAR_CorrectResourceAttributes(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+	viper.Set(common.AllowedServiceAccountsFlag, "my-special-sa")
+	defer viper.Set(common.AllowedServiceAccountsFlag, "")
+
+	_, manager, experiment, capturingClient := initWithExperimentAndCapturingSAR(t)
+
+	job := &model.Job{
+		DisplayName: "j1",
+		Enabled:     true,
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+		},
+		ExperimentId:   experiment.UUID,
+		ServiceAccount: "my-special-sa",
+	}
+	_, err := manager.CreateJob(multiUserContext(), job)
+	require.Nil(t, err)
+
+	require.NotNil(t, capturingClient.lastReview)
+	attrs := capturingClient.lastReview.Spec.ResourceAttributes
+	assert.Equal(t, common.RbacResourceVerbUse, attrs.Verb)
+	assert.Equal(t, "serviceaccounts", attrs.Resource)
+	assert.Equal(t, "my-special-sa", attrs.Name)
+	assert.Equal(t, "ns1", attrs.Namespace)
+}
+
+func TestCreateRun_ServiceAccountSAR_DefaultSA_NotCalled(t *testing.T) {
+	viper.Set(common.MultiUserMode, "true")
+	defer viper.Set(common.MultiUserMode, "false")
+
+	_, manager, experiment, capturingClient := initWithExperimentAndCapturingSAR(t)
+
+	apiRun := &model.Run{
+		DisplayName: "run1",
+		PipelineSpec: model.PipelineSpec{
+			WorkflowSpecManifest: testWorkflow.ToStringForStore(),
+			Parameters:           "[{\"name\":\"param1\",\"value\":\"world\"}]",
+		},
+		ExperimentId: experiment.UUID,
+	}
+	run, err := manager.CreateRun(multiUserContext(), apiRun)
+	require.Nil(t, err)
+	assert.Equal(t, common.DefaultPipelineRunnerServiceAccount, run.ServiceAccount)
+	assert.Nil(t, capturingClient.lastReview)
+}
