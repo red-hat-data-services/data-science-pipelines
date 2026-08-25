@@ -1,6 +1,6 @@
 module github.com/kubeflow/pipelines/api
 
-go 1.25.7
+go 1.26.3
 
 require (
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
@@ -9,6 +9,6 @@ require (
 
 replace (
 	github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.18
-	golang.org/x/net => golang.org/x/net v0.33.0
+	golang.org/x/net => golang.org/x/net v0.56.0
 	google.golang.org/grpc => google.golang.org/grpc v1.56.3
 )
