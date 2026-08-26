@@ -15,11 +15,11 @@
 # Build arguments
 ARG SOURCE_CODE=.
 
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25.7-1771417345 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3 AS builder
 
 USER root
 
-RUN dnf install -y cmake clang openssl
+RUN dnf install -y cmake clang openssl openssl-devel
 
 COPY ${SOURCE_CODE}/go.mod ./
 COPY ${SOURCE_CODE}/go.sum ./
