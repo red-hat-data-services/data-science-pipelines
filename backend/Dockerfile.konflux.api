@@ -20,7 +20,7 @@ ARG SOURCE_CODE
 
 USER root
 
-RUN dnf install -y cmake clang openssl
+RUN dnf install -y cmake clang openssl openssl-devel
 
 
 COPY ${SOURCE_CODE}/go.mod ./
