@@ -10,6 +10,7 @@ packages:
   - clang
   - llvm
   - openssl
+  - openssl-libs
   - openssl-devel
   - ca-certificates
   - wget
