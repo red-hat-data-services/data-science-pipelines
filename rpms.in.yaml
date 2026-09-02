@@ -10,9 +10,35 @@ packages:
   - clang
   - llvm
   - openssl
-  - openssl-libs
   - openssl-devel
   - ca-certificates
   - wget
+
+# WORKAROUND: Include openssl-libs in reinstallPackages to resolve build failures
+#
+# Context: The rpm lock file is generated based on the final stage image (ubi-minimal),
+# which has openssl-libs-3.5.5-6 pre-installed but does NOT have openssl or openssl-devel.
+# The actual RPM installation happens in the builder stage (go-toolset), which has all
+# three packages (openssl, openssl-devel, and openssl-libs) pre-installed at version 3.5.5-4.
+#
+# Problem: During lock file generation, openssl and openssl-devel (not present in ubi-minimal)
+# are added to the lock file at version 3.5.5-6. When dnf installs these in the builder stage,
+# it attempts to upgrade them from 3.5.5-4 to 3.5.5-6 to match the lock file. This upgrade
+# requires openssl-libs-3.5.5-6 as a dependency. However, openssl-libs-3.5.5-6 is NOT in the
+# lock file (since it's already present in ubi-minimal), and therefore is not available in
+# the offline hermeto snapshot. Build fails with dependency resolution errors.
+#
+# Solution: By explicitly listing openssl-libs in reinstallPackages, we force it to be
+# included in the auto-generated lock file, ensuring it's available in the hermeto snapshot
+# when dnf needs it to upgrade openssl and openssl-devel in the builder stage.
+#
+# Note: This is a short-term workaround. The root cause is the mismatch between the
+# lock file generation context (final stage) and the package installation context (builder
+# stage). A long-term solution should align these contexts or reconsider the explicit
+# openssl package installation requirement.
+#
+reinstallPackages:
+  - openssl-libs
+
 context:
   containerfile: backend/Dockerfile.konflux.api
