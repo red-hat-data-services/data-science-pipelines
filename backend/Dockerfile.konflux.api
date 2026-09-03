@@ -28,7 +28,7 @@ COPY ${SOURCE_CODE}/ ./
 
 RUN GOTOOLCHAIN=local GO111MODULE=on CGO_ENABLED=1 GOFIPS140=v1.0.0 go build -tags no_openssl -o /bin/apiserver ./backend/src/apiserver/
 
-FROM registry.redhat.io/ubi9/ubi-minimal-pqc@sha256:8a842ac769de709143e4edeace516f2008dfdc431b64670ad3353fa323b44736
+FROM registry.redhat.io/ubi9/ubi-minimal-pqc@sha256:3e009398a8aa8eec621393fbf308c5e622f174900e44e8d5fe224c637920924a
 
 WORKDIR /bin
 
