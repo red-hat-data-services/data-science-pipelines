@@ -64,7 +64,7 @@ class DSPDeployer:
             'deploy_pypi_server', 'deploy_external_argo', 'proxy',
             'cache_enabled', 'multi_user', 'artifact_proxy', 'forward_port',
             'pod_to_pod_tls_enabled', 'deploy_external_db',
-            'skip_operator_deployment'
+            'skip_operator_deployment', 'operator_branch_required'
         ]
         for arg_name in boolean_args:
             if hasattr(self.args, arg_name):
@@ -86,7 +86,7 @@ class DSPDeployer:
         else:
             raise ValueError('GitHub repository not provided')
 
-        self.target_branch = self.args.github_base_ref or 'main'
+        self.target_branch = self.args.operator_branch or 'main'
         print(f'🌳 Target branch: {self.target_branch}')
 
         if self.repo_owner == 'red-hat-data-services':
@@ -210,6 +210,7 @@ class DSPDeployer:
                 print('🔧 Using DSPO (operator) deployment mode')
 
                 self.operator.clone_operator_repo()
+                self.operator.build_operator_image()
                 self._init_deployers_after_clone()
 
                 self.operator.create_operator_namespace()
@@ -260,6 +261,8 @@ class DSPDeployer:
 
                 self.deploy_dsp_direct()
 
+            self._patch_v1_allowed_namespaces()
+
             self.infra.forward_port(is_operator=use_operator)
 
             print('🎉 Deployment completed successfully!')
@@ -270,6 +273,32 @@ class DSPDeployer:
         finally:
             if self.temp_dir and os.path.exists(self.temp_dir):
                 shutil.rmtree(self.temp_dir)
+
+    def _patch_v1_allowed_namespaces(self):
+        """Allow V1 pipelines in the deployment namespace for CI tests."""
+        namespace = self.deployment_namespace or self.args.namespace
+        if self.is_operator_deployment:
+            deployments = [
+                f'ds-pipeline-{self.dspa_name}',
+                f'ds-pipeline-scheduledworkflow-{self.dspa_name}',
+            ]
+        else:
+            deployments = ['ml-pipeline', 'ml-pipeline-scheduledworkflow']
+
+        print(f'🔧 Setting V1_ALLOWED_NAMESPACES={namespace}')
+        for deploy in deployments:
+            self.deployment_manager.run_command([
+                'kubectl', 'set', 'env',
+                f'deployment/{deploy}',
+                f'V1_ALLOWED_NAMESPACES={namespace}',
+                '-n', namespace
+            ])
+        for deploy in deployments:
+            self.deployment_manager.run_command([
+                'kubectl', 'rollout', 'status',
+                f'deployment/{deploy}',
+                '-n', namespace, '--timeout=120s'
+            ])
 
     def output_deployment_metadata(self):
         """Output deployment metadata for GitHub Actions."""
@@ -310,7 +339,18 @@ def main():
         '--github-repository', required=True,
         help='GitHub repository (owner/repo)')
     parser.add_argument(
-        '--github-base-ref', help='GitHub base ref (target branch)')
+        '--operator-branch', required=True, help='DSPO source branch')
+    parser.add_argument(
+        '--operator-branch-required', required=True,
+        help='Fail instead of falling back when DSPO source branch is absent')
+    parser.add_argument(
+        '--operator-repo-owner', required=True,
+        help='Preferred DSPO repository owner for fork branch lookup')
+    parser.add_argument(
+        '--operator-upstream-owner', required=True,
+        help='Canonical DSPO repository owner for upstream fallback')
+    parser.add_argument(
+        '--cluster-name', required=True, help='Kind cluster name')
 
     # Image configuration
     parser.add_argument('--image-tag', required=True, help='Image tag')
@@ -360,10 +400,6 @@ def main():
         help='Deploy DB externally instead of via DSPO')
     parser.add_argument(
         '--dspa-name', default='dspa-test', help='Name of DSPA resource')
-    parser.add_argument(
-        '--operator-image-tag', default='',
-        help='Image tag for DSPO operator (overrides github-base-ref)')
-
     args = parser.parse_args()
 
     deployer = DSPDeployer(args)
