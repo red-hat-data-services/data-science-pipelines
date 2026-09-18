@@ -105,13 +105,14 @@ type Options struct {
 
 // TaskConfig needs to stay aligned with the TaskConfig in the SDK.
 type TaskConfig struct {
-	Affinity     *k8score.Affinity            `json:"affinity"`
-	Tolerations  []k8score.Toleration         `json:"tolerations"`
-	NodeSelector map[string]string            `json:"nodeSelector"`
-	Env          []k8score.EnvVar             `json:"env"`
-	Volumes      []k8score.Volume             `json:"volumes"`
-	VolumeMounts []k8score.VolumeMount        `json:"volumeMounts"`
-	Resources    k8score.ResourceRequirements `json:"resources"`
+	Affinity       *k8score.Affinity            `json:"affinity"`
+	Tolerations    []k8score.Toleration         `json:"tolerations"`
+	NodeSelector   map[string]string            `json:"nodeSelector"`
+	Env            []k8score.EnvVar             `json:"env"`
+	Volumes        []k8score.Volume             `json:"volumes"`
+	VolumeMounts   []k8score.VolumeMount        `json:"volumeMounts"`
+	Resources      k8score.ResourceRequirements `json:"resources"`
+	ResourceClaims []k8score.PodResourceClaim   `json:"resourceClaims"`
 }
 
 // Identifying information used for error messages
@@ -205,12 +206,13 @@ func getTaskConfigOptions(
 	passthroughEnabled := map[pipelinespec.TaskConfigPassthroughType_TaskConfigPassthroughTypeEnum]bool{}
 	// setOnTask contains all possible fields even if they are not in the passthrough list.
 	setOnPod := map[pipelinespec.TaskConfigPassthroughType_TaskConfigPassthroughTypeEnum]bool{
-		pipelinespec.TaskConfigPassthroughType_RESOURCES:                true,
-		pipelinespec.TaskConfigPassthroughType_ENV:                      true,
-		pipelinespec.TaskConfigPassthroughType_KUBERNETES_AFFINITY:      true,
-		pipelinespec.TaskConfigPassthroughType_KUBERNETES_TOLERATIONS:   true,
-		pipelinespec.TaskConfigPassthroughType_KUBERNETES_NODE_SELECTOR: true,
-		pipelinespec.TaskConfigPassthroughType_KUBERNETES_VOLUMES:       true,
+		pipelinespec.TaskConfigPassthroughType_RESOURCES:                  true,
+		pipelinespec.TaskConfigPassthroughType_ENV:                        true,
+		pipelinespec.TaskConfigPassthroughType_KUBERNETES_AFFINITY:        true,
+		pipelinespec.TaskConfigPassthroughType_KUBERNETES_TOLERATIONS:     true,
+		pipelinespec.TaskConfigPassthroughType_KUBERNETES_NODE_SELECTOR:   true,
+		pipelinespec.TaskConfigPassthroughType_KUBERNETES_VOLUMES:         true,
+		pipelinespec.TaskConfigPassthroughType_KUBERNETES_RESOURCE_CLAIMS: true,
 	}
 
 	if componentSpec == nil {
@@ -299,19 +301,10 @@ func initPodSpecPatch(
 		setOnTaskConfig = map[pipelinespec.TaskConfigPassthroughType_TaskConfigPassthroughTypeEnum]bool{}
 	}
 
-	userCmdArgs := make([]string, 0, len(container.Command)+len(container.Args))
-
-	resolvedCommand, err := resolveContainerArgs(container.Command, executorInput)
+	userCmdArgs, err := resolveContainerCommandAndArgs(container, componentSpec, executorInput)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve container command: %w", err)
+		return nil, err
 	}
-	userCmdArgs = append(userCmdArgs, resolvedCommand...)
-
-	resolvedArgs, err := resolveContainerArgs(container.Args, executorInput)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve container args: %w", err)
-	}
-	userCmdArgs = append(userCmdArgs, resolvedArgs...)
 	launcherCmd := []string{
 		component.KFPLauncherPath,
 		// TODO(Bobgy): no need to pass pipeline_name and run_id, these info can be fetched via pipeline context and pipeline run context which have been created by root DAG driver.
@@ -510,6 +503,30 @@ func initPodSpecPatch(
 	}
 
 	return podSpec, nil
+}
+
+func resolveContainerCommandAndArgs(
+	container *pipelinespec.PipelineDeploymentConfig_PipelineContainerSpec,
+	componentSpec *pipelinespec.ComponentSpec,
+	executorInput *pipelinespec.ExecutorInput,
+) ([]string, error) {
+	executorInputWithDefaults, err := component.AddDefaultParams(executorInput, componentSpec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply component parameter defaults: %w", err)
+	}
+
+	userCmdArgs := make([]string, 0, len(container.Command)+len(container.Args))
+	resolvedCommand, err := resolveContainerArgs(container.Command, executorInputWithDefaults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve container command: %w", err)
+	}
+	userCmdArgs = append(userCmdArgs, resolvedCommand...)
+
+	resolvedArgs, err := resolveContainerArgs(container.Args, executorInputWithDefaults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve container args: %w", err)
+	}
+	return append(userCmdArgs, resolvedArgs...), nil
 }
 
 // needsWorkspaceMount checks if the component needs workspace mounting based on input parameters and artifacts.
