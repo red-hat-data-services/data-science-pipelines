@@ -89,8 +89,12 @@ inputs:
     description: "Name of the DSPA resource"
     required: false
     default: 'dspa-test'
+  operator_image_tag:
+    description: "Image tag to use for the DSPO operator. Overrides github-base-ref for operator image selection."
+    required: false
+    default: ''
   operator_branch:
-    description: "Exact DSPO source branch. Defaults to the PR head branch or current branch with upstream fallback."
+    description:  "Branch of DSPO to clone to fetch K8s manifests"
     required: false
     default: ''
   skip_load_docker_images:
@@ -172,10 +176,7 @@ runs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-        OPERATOR_BRANCH: ${{ inputs.operator_branch || github.head_ref || github.ref_name }}
-        OPERATOR_BRANCH_REQUIRED: ${{ inputs.operator_branch != '' }}
-        OPERATOR_REPO_OWNER: ${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
-        OPERATOR_UPSTREAM_OWNER: ${{ github.repository_owner == 'red-hat-data-services' && 'red-hat-data-services' || 'opendatahub-io' }}
+        GITHUB_BASE_REF: ${{ inputs.operator_branch || github.base_ref || github.ref_name }}
         IMAGE_TAG: ${{ inputs.image_tag }}
         IMAGE_REGISTRY: ${{ inputs.image_registry }}
         DEPLOY_PYPI_SERVER: ${{ inputs.deploy_pypi_server }}
@@ -195,7 +196,7 @@ runs:
         IMAGE_PATH_PREFIX: ${{ inputs.image_path_prefix }}
         DEPLOY_EXTERNAL_DB: ${{ inputs.deploy_external_db }}
         DSPA_NAME: ${{ inputs.dspa_name }}
-        CLUSTER_NAME: ${{ inputs.cluster_name }}
+        OPERATOR_IMAGE_TAG: ${{ inputs.operator_image_tag }}
       run: |
         # Apply defaults for empty values
         PIPELINE_STORE="${PIPELINE_STORE:-database}"
@@ -209,11 +210,7 @@ runs:
 
         python3 ./.github/actions/deploy/deploy.py \
           --github-repository "$GITHUB_REPOSITORY" \
-          --operator-branch "$OPERATOR_BRANCH" \
-          --operator-branch-required "$OPERATOR_BRANCH_REQUIRED" \
-          --operator-repo-owner "$OPERATOR_REPO_OWNER" \
-          --operator-upstream-owner "$OPERATOR_UPSTREAM_OWNER" \
-          --cluster-name "$CLUSTER_NAME" \
+          --github-base-ref "$GITHUB_BASE_REF" \
           --image-tag "$IMAGE_TAG" \
           --image-registry "$IMAGE_REGISTRY" \
           --deploy-pypi-server "$DEPLOY_PYPI_SERVER" \
@@ -232,4 +229,5 @@ runs:
           --skip-operator-deployment "$SKIP_OPERATOR_DEPLOYMENT" \
           --image-path-prefix "$IMAGE_PATH_PREFIX" \
           --deploy-external-db "$DEPLOY_EXTERNAL_DB" \
-          --dspa-name "$DSPA_NAME"
+          --dspa-name "$DSPA_NAME" \
+          --operator-image-tag "$OPERATOR_IMAGE_TAG"

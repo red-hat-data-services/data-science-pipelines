@@ -9,8 +9,7 @@ env:
   USER_NAMESPACE: "kubeflow-user-example-com"
   PYTHON_VERSION: "3.9"
   CA_CERT_PATH: ""
-  # Keep direct-deployment conditionals intact; removing them is follow-up work.
-  SKIP_OPERATOR_DEPLOYMENT: 'false'
+  SKIP_OPERATOR_DEPLOYMENT: ${{ github.repository_owner != 'opendatahub-io' }}
 
 on:
   push:
