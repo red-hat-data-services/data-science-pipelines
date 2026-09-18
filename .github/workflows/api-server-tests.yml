@@ -9,7 +9,8 @@ env:
   USER_NAMESPACE: "kubeflow-user-example-com"
   PYTHON_VERSION: "3.9"
   CA_CERT_PATH: ""
-  SKIP_OPERATOR_DEPLOYMENT: ${{ github.repository_owner != 'opendatahub-io' }}
+  # Keep direct-deployment conditionals intact; removing them is follow-up work.
+  SKIP_OPERATOR_DEPLOYMENT: 'false'
 
 on:
   push:
@@ -132,6 +133,7 @@ jobs:
           if [ "${{ env.SKIP_OPERATOR_DEPLOYMENT }}" == "false" ]; then
             kubectl get configmap openshift-service-ca.crt -n kubeflow -o jsonpath='{.data.service-ca\.crt}' > "${{ github.workspace }}/ca.crt"
           else
+            kubectl wait --for=condition=Ready certificate/kfp-api-tls-cert -n kubeflow --timeout=120s
             kubectl get secret kfp-api-tls-cert -n kubeflow -o jsonpath='{.data.ca\.crt}' | base64 -d > "${{ github.workspace }}/ca.crt"
           fi
           echo "CA_CERT_PATH=${{ github.workspace }}/ca.crt" >> "$GITHUB_ENV"
