@@ -6,6 +6,7 @@ contentOrigin:
   repofiles:
     - ubi.repo
 packages:
+  - annobin
   - cmake
   - clang
   - llvm
