@@ -13,5 +13,7 @@ packages:
   - openssl
   - ca-certificates
   - wget
+reinstallPackages:
+  - audit-libs
 context:
   containerfile: backend/Dockerfile.konflux.api
