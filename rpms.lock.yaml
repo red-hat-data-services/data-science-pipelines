@@ -4,6 +4,13 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/a/annobin-12.98-2.el9.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 1120755
+    checksum: sha256:262aed79fa857210c9fee35c11b855f4f1d36341392a6942c124e0329fe7f8a4
+    name: annobin
+    evr: 12.98-2.el9
+    sourcerpm: annobin-12.98-2.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/c/checkpolicy-3.6-1.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-appstream-rpms
     size: 360096
@@ -291,6 +298,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/a/audit-libs-3.1.5-8.el9.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 128901
+    checksum: sha256:11880ec70b575841843cbee0853e03e50a0506321ea0a6f76c0c8145d79ae531
+    name: audit-libs
+    evr: 3.1.5-8.el9
+    sourcerpm: audit-3.1.5-8.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/b/binutils-2.35.2-72.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 5021411
@@ -677,6 +691,12 @@ arches:
     evr: 2:8.2.2637-26.el9_8.23
     sourcerpm: vim-8.2.2637-26.el9_8.23.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/source/SRPMS/Packages/a/annobin-12.98-2.el9.src.rpm
+    repoid: ubi-9-for-aarch64-appstream-source-rpms
+    size: 1017147
+    checksum: sha256:6724882369b201d4cc564b60c5c8271e30f3622488f27b844a2748a52da9287a
+    name: annobin
+    evr: 12.98-2.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/source/SRPMS/Packages/c/checkpolicy-3.6-1.el9.src.rpm
     repoid: ubi-9-for-aarch64-appstream-source-rpms
     size: 94887
@@ -1016,6 +1036,13 @@ arches:
   module_metadata: []
 - arch: ppc64le
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/a/annobin-12.98-2.el9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 1126819
+    checksum: sha256:42730aeb7c10f655d820481d2f2fbb5a0de2ed0db5430a084951ad4cfba5e3c3
+    name: annobin
+    evr: 12.98-2.el9
+    sourcerpm: annobin-12.98-2.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/c/checkpolicy-3.6-1.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-appstream-rpms
     size: 392817
@@ -1303,6 +1330,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/a/audit-libs-3.1.5-8.el9.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 149393
+    checksum: sha256:217118e6574a40a18ce9a3b46ab68ffbb62b65f2cffb3b8ec7da442e800be170
+    name: audit-libs
+    evr: 3.1.5-8.el9
+    sourcerpm: audit-3.1.5-8.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/b/binutils-2.35.2-72.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 5218918
@@ -1696,6 +1730,12 @@ arches:
     evr: 2:8.2.2637-26.el9_8.23
     sourcerpm: vim-8.2.2637-26.el9_8.23.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/source/SRPMS/Packages/a/annobin-12.98-2.el9.src.rpm
+    repoid: ubi-9-for-ppc64le-appstream-source-rpms
+    size: 1017147
+    checksum: sha256:6724882369b201d4cc564b60c5c8271e30f3622488f27b844a2748a52da9287a
+    name: annobin
+    evr: 12.98-2.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/source/SRPMS/Packages/c/checkpolicy-3.6-1.el9.src.rpm
     repoid: ubi-9-for-ppc64le-appstream-source-rpms
     size: 94887
@@ -2041,6 +2081,13 @@ arches:
   module_metadata: []
 - arch: x86_64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/a/annobin-12.98-2.el9.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 1121890
+    checksum: sha256:a27f53f146f65d077290eccdd1a4fd58c2a761a31baad860aa4961961d52d509
+    name: annobin
+    evr: 12.98-2.el9
+    sourcerpm: annobin-12.98-2.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/c/checkpolicy-3.6-1.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-appstream-rpms
     size: 365931
@@ -2328,6 +2375,13 @@ arches:
     name: acl
     evr: 2.4.0-1.el9_8
     sourcerpm: acl-2.4.0-1.el9_8.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/a/audit-libs-3.1.5-8.el9.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 130600
+    checksum: sha256:637ac2995ce1a6c222772b60f6bc6e6f2829355d2c88dfb1262fb76146d985ae
+    name: audit-libs
+    evr: 3.1.5-8.el9
+    sourcerpm: audit-3.1.5-8.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/b/binutils-2.35.2-72.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 4821853
@@ -2714,6 +2768,12 @@ arches:
     evr: 2:8.2.2637-26.el9_8.23
     sourcerpm: vim-8.2.2637-26.el9_8.23.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/source/SRPMS/Packages/a/annobin-12.98-2.el9.src.rpm
+    repoid: ubi-9-for-x86_64-appstream-source-rpms
+    size: 1017147
+    checksum: sha256:6724882369b201d4cc564b60c5c8271e30f3622488f27b844a2748a52da9287a
+    name: annobin
+    evr: 12.98-2.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/source/SRPMS/Packages/c/checkpolicy-3.6-1.el9.src.rpm
     repoid: ubi-9-for-x86_64-appstream-source-rpms
     size: 94887

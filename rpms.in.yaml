@@ -6,11 +6,14 @@ contentOrigin:
   repofiles:
     - ubi.repo
 packages:
+  - annobin
   - cmake
   - clang
   - llvm
   - openssl
   - ca-certificates
   - wget
+reinstallPackages:
+  - audit-libs
 context:
   containerfile: backend/Dockerfile.konflux.api
