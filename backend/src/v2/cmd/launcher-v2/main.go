@@ -50,6 +50,7 @@ var (
 	caCertPath                     = flag.String("ca_cert_path", "", "The path to the CA certificate.")
 )
 
+// test comment
 func main() {
 	err := run()
 	if err != nil {
