@@ -46,6 +46,11 @@ func (FakePodClient) UpdateStatus(context.Context, *corev1.Pod, v1.UpdateOptions
 	return nil, nil
 }
 
+func (FakePodClient) UpdateResize(context.Context, string, *corev1.Pod, v1.UpdateOptions) (*corev1.Pod, error) {
+	glog.Error("This fake method is not yet implemented")
+	return nil, nil
+}
+
 func (FakePodClient) Delete(ctx context.Context, name string, options v1.DeleteOptions) error {
 	return nil
 }
