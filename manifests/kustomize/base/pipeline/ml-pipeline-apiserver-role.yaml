@@ -63,3 +63,11 @@ rules:
   - tokenreviews
   verbs:
   - create
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - kfp-launcher
+  verbs:
+  - get
