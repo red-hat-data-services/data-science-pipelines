@@ -406,9 +406,7 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKuber
 		pipelineStore = "database"
 	}
 
-	runtimeMux := runtime.NewServeMux(
-		runtime.WithIncomingHeaderMatcher(grpcCustomMatcher),
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, common.CustomMarshaler()))
+	runtimeMux := newGRPCGatewayServeMux()
 	register := func(handler RegisterHttpHandlerFromEndpoint, serviceName string) {
 		if err := registerHTTPHandlerFromEndpoint(ctx, handler, serviceName, runtimeMux, tlsCfg); err != nil {
 			glog.Fatalf("%v", err)
@@ -493,6 +491,15 @@ func newHealthzResponse(pipelineStore string) healthzResponse {
 		MultiUser:     common.IsMultiUserMode(),
 		PipelineStore: pipelineStore,
 	}
+}
+
+func newGRPCGatewayServeMux() *runtime.ServeMux {
+	return runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(grpcCustomMatcher),
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, common.CustomMarshaler()),
+		// Do not let a form POST bypass HTTP method rules in an upstream proxy.
+		runtime.WithDisableHTTPMethodOverride(),
+	)
 }
 
 // buildHTTPRouter constructs the top-level HTTP router with all API routes
