@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Contact one of chensun, HumairAK if this remote image needs an update.
-PREBUILT_REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator:master
+API_GENERATOR_IMAGE ?= ghcr.io/kubeflow/kfp-api-generator:master
 
 .PHONY: all
 all: golang python
@@ -27,7 +27,7 @@ golang: v2alpha1/*.proto
 	docker run --interactive --rm \
 		--user $$(id -u):$$(id -g) \
 		--mount type=bind,source="$$(pwd)/..",target=/go/src/github.com/kubeflow/pipelines \
-		$(PREBUILT_REMOTE_IMAGE)  \
+		$(API_GENERATOR_IMAGE)  \
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/api && make generate'
 
 # Delete all generated proto go packages.
@@ -43,7 +43,7 @@ python: python fetch-protos
 		--user $$(id -u):$$(id -g) \
 		-e HOME=/tmp \
 		-v "$$(pwd)/..":"/go/src/github.com/kubeflow/pipelines":z \
-		$(PREBUILT_REMOTE_IMAGE) \
+		$(API_GENERATOR_IMAGE) \
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python && \
 		    uv run --no-project --with-requirements requirements.txt python3 generate_proto.py && \
 		    uv build --no-build-isolation'
