@@ -164,7 +164,9 @@ runs:
         pip3 install pyyaml
 
     - name: Set up Go
-      uses: ./.github/actions/setup-go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: go.mod
 
     - name: Deploy Data Science Pipelines
       id: deploy-kfp
