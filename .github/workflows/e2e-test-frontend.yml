@@ -26,7 +26,7 @@ jobs:
     uses: ./.github/workflows/image-builds.yml
 
   frontend-integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     strategy:
       matrix:

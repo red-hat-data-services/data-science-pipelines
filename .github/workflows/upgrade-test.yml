@@ -37,7 +37,7 @@ jobs:
   upgrade-test:
     if: github.repository_owner == 'opendatahub-io'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         k8s_version: [ "v1.34.0" ]

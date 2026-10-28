@@ -20,7 +20,7 @@ env:
 
 jobs:
   image-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       image_path: ${{ steps.configure.outputs.artifact_path }}
       image_tag: ${{ steps.configure.outputs.image_tag }}

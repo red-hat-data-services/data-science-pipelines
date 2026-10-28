@@ -62,7 +62,7 @@ jobs:
     uses: ./.github/workflows/image-builds.yml
 
   end-to-end-scenario-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     strategy:
       matrix:
@@ -219,7 +219,7 @@ jobs:
           deployment_mode: ${{ steps.deploy.outputs.deployment_mode }}
 
   end-to-end-critical-scenario-multi-user-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     strategy:
       matrix:
