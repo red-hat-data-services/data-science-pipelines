@@ -416,6 +416,34 @@ func TestRegisterHTTPHandlerFromEndpoint(t *testing.T) {
 	})
 }
 
+func TestGRPCGatewayRejectsHTTPMethodOverride(t *testing.T) {
+	serveMux := newGRPCGatewayServeMux()
+	deleteCalled := false
+	err := serveMux.HandlePath(http.MethodDelete, "/apis/v2beta1/experiments/{experiment_id}",
+		func(writer http.ResponseWriter, request *http.Request, pathParameters map[string]string) {
+			deleteCalled = true
+			writer.WriteHeader(http.StatusNoContent)
+		})
+	require.NoError(t, err)
+
+	postRequest := httptest.NewRequest(http.MethodPost, "/apis/v2beta1/experiments/123", strings.NewReader("key=value"))
+	postRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	postRequest.Header.Set("X-HTTP-Method-Override", http.MethodDelete)
+	postResponse := httptest.NewRecorder()
+	serveMux.ServeHTTP(postResponse, postRequest)
+
+	// grpc-gateway maps a method mismatch to Unimplemented (HTTP 501).
+	assert.Equal(t, http.StatusNotImplemented, postResponse.Code)
+	assert.False(t, deleteCalled)
+
+	deleteRequest := httptest.NewRequest(http.MethodDelete, "/apis/v2beta1/experiments/123", nil)
+	deleteResponse := httptest.NewRecorder()
+	serveMux.ServeHTTP(deleteResponse, deleteRequest)
+
+	assert.Equal(t, http.StatusNoContent, deleteResponse.Code)
+	assert.True(t, deleteCalled)
+}
+
 func TestResolveWebhookTLSPaths(t *testing.T) {
 	allFilesExist := func(string) bool { return true }
 	noFilesExist := func(string) bool { return false }
