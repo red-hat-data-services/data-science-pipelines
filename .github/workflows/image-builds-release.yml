@@ -80,7 +80,7 @@ jobs:
 
         arch:
           - arch_name: amd64
-            runs_on: ubuntu-latest
+            runs_on: ubuntu-24.04
             platform: linux/amd64
           - arch_name: arm64
             runs_on: ubuntu-24.04-arm
