@@ -45,9 +45,8 @@ python: python fetch-protos
 		-v "$$(pwd)/..":"/go/src/github.com/kubeflow/pipelines":z \
 		$(PREBUILT_REMOTE_IMAGE) \
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/api/v2alpha1/python && \
-		    python3 -m pip install --user --break-system-packages -r requirements.txt && \
-		    python3 generate_proto.py && \
-            python3 setup.py sdist && pip wheel --no-deps dist/*.tar.gz -w dist'
+		    uv run --no-project --with-requirements requirements.txt python3 generate_proto.py && \
+		    uv build --no-build-isolation'
 
 # Build and locally install Python package using editable mode for development.
 .PHONY: python-dev
