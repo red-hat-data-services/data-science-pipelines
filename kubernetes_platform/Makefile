@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PREBUILT_REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator:master
+API_GENERATOR_IMAGE ?= ghcr.io/kubeflow/kfp-api-generator:master
 
 # Set USE_FIND_LINKS=true to include local SDK distributions when installing generator requirements.
 # e.g. make python USE_FIND_LINKS=true FIND_LINKS_PATH="path1,path2"
@@ -30,7 +30,7 @@ golang: proto/*.proto
 	docker run --interactive --rm \
 		--user $$(id -u):$$(id -g) \
 		-v "$$(pwd)/..":"/go/src/github.com/kubeflow/pipelines":z \
-		$(PREBUILT_REMOTE_IMAGE)  \
+		$(API_GENERATOR_IMAGE)  \
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/kubernetes_platform && make generate-go-in-container'
 
 # Delete all generated proto go packages.
@@ -50,7 +50,7 @@ python: proto/kubernetes_executor_config.proto fetch-protos
 		-e HOME=/tmp \
 		$(if $(USE_FIND_LINKS),-e UV_FIND_LINKS="$(FIND_LINKS_PATH)") \
 		-v "$$(pwd)/..":"/go/src/github.com/kubeflow/pipelines":z \
-		$(PREBUILT_REMOTE_IMAGE) \
+		$(API_GENERATOR_IMAGE) \
 		sh -c 'cd /go/src/github.com/kubeflow/pipelines/kubernetes_platform/python && \
 		    uv run --no-project --with-requirements requirements.txt python3 generate_proto.py && \
 		    uv build --no-build-isolation'
