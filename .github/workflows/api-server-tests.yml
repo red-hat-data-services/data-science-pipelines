@@ -65,7 +65,7 @@ jobs:
 
   api-test-standalone:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         k8s_version: [ "v1.35.0" ]
@@ -186,7 +186,7 @@ jobs:
 
   api-test-k8s-native:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         k8s_version: [ "v1.35.0", "v1.31.14" ]
@@ -253,7 +253,7 @@ jobs:
 
   api-test-multi-user:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         k8s_version: [ "v1.35.0"]
