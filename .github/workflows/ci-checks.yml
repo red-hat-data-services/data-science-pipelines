@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   check_ci_status:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       checks: read
     steps:

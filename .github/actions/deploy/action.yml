@@ -160,10 +160,18 @@ runs:
           docker image rm localhost:5000/$app:${{ inputs.image_tag }}
           docker image rm localhost:5000/$app:ci
         done
-        bash ./.github/resources/scripts/docker-pull-with-retry.sh python:3.11
-        bash ./.github/resources/scripts/docker-pull-with-retry.sh registry.access.redhat.com/ubi9/python-311:latest
-        kind load docker-image python:3.11 --name ${{ inputs.cluster_name }}
-        kind load docker-image registry.access.redhat.com/ubi9/python-311:latest --name ${{ inputs.cluster_name }}
+        # Pull runtime base images directly inside the Kind node instead of
+        # pulling on the runner and loading via docker save/kind load: with
+        # the runner's Docker containerd image store, the saved multi-platform
+        # index references blobs that are not part of the exported tar, so
+        # ctr import fails with "content digest ... not found". A node-side
+        # ctr pull fetches the node platform only and stores complete content.
+        NODE="${{ inputs.cluster_name }}-control-plane"
+        source ./.github/resources/scripts/helper-functions.sh
+        # ctr requires fully qualified image names; unlike Docker, it does not
+        # expand python:3.11 to docker.io/library/python:3.11.
+        retry 3 30 docker exec --privileged "$NODE" ctr --namespace=k8s.io images pull --snapshotter=overlayfs docker.io/library/python:3.11
+        retry 3 30 docker exec --privileged "$NODE" ctr --namespace=k8s.io images pull --snapshotter=overlayfs registry.access.redhat.com/ubi9/python-311:latest
 
     - name: Install Python Dependencies
       shell: bash
