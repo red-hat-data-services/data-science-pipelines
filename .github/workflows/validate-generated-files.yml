@@ -50,8 +50,7 @@ jobs:
           python-version: 3.9
           cache: 'pip'
 
-      # Use this branch's pinned generator tools to avoid drift from the published image;
-      # add uv for the Python generation targets that run inside the image.
+      # Build this branch's generator with tool versions matching its checked-in clients.
       - name: Build API generator image
         run: |
           make -C backend/api image
