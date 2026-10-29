@@ -114,9 +114,7 @@ class DSPDeployer:
             ['kubectl', 'create', 'namespace', self.deployment_namespace],
             check=False)
 
-        if self.args.pod_to_pod_tls_enabled:
-            self.tls_manager = TLSCertificateManager(self)
-            print('🔐 TLS certificate manager initialized for podToPodTLS')
+        self.tls_manager = TLSCertificateManager(self)
 
         # Initialize sub-deployers
         self.operator = OperatorDeployer(self.args, self.deployment_manager,
@@ -149,8 +147,8 @@ class DSPDeployer:
     def _should_use_operator_deployment(self) -> bool:
         """Determine whether to use DSPO (operator) or direct deployment."""
         if self.args.enable_modular_architecture and (
-                self.skip_operator_deployment or self.args.multi_user
-                or self.args.proxy):
+                self.skip_operator_deployment or self.args.multi_user or
+                self.args.proxy):
             raise ValueError(
                 'Modular AIPipelines requires operator deployment mode; '
                 'disable skip_operator_deployment, multi_user, or proxy')
@@ -225,9 +223,8 @@ class DSPDeployer:
 
                 self.infra.deploy_cert_manager()
 
-                if self.args.pod_to_pod_tls_enabled and self.tls_manager:
-                    # Create external DB namespace before TLS setup so
-                    # certificates and CA issuers can be written there.
+                if self.tls_manager:
+                    # Create the external DB namespace before certificate setup.
                     if self.args.deploy_external_db:
                         print(
                             f'🏷️  Pre-creating external DB namespace for TLS: {self.external_db_namespace}'
@@ -279,6 +276,13 @@ class DSPDeployer:
 
         except Exception as e:
             print(f'❌ Deployment failed: {str(e)}')
+            if self.is_operator_deployment and self.tls_manager:
+                try:
+                    self.tls_manager.debug_certificates()
+                except Exception as diagnostic_error:
+                    print(
+                        f'⚠️  Certificate diagnostics failed: {diagnostic_error}'
+                    )
             raise
         finally:
             if self.temp_dir and os.path.exists(self.temp_dir):

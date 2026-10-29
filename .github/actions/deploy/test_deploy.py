@@ -7,6 +7,78 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from deploy import DSPDeployer
+from tls_manager import TLSCertificateManager
+
+
+class TestOperatorCertificateSetup(unittest.TestCase):
+
+    def test_failed_deployment_collects_diagnostics_and_preserves_error(self):
+        deployer = DSPDeployer(
+            SimpleNamespace(
+                skip_operator_deployment=False,
+                multi_user=False,
+                proxy=False,
+                enable_modular_architecture=False))
+        deployer.operator = MagicMock()
+        deployer.operator.clone_operator_repo.side_effect = RuntimeError(
+            'original deployment failure')
+        deployer.tls_manager = MagicMock()
+        deployer.tls_manager.debug_certificates.side_effect = RuntimeError(
+            'diagnostic failure')
+        with patch.object(deployer, 'setup_environment'):
+            with self.assertRaisesRegex(RuntimeError,
+                                        'original deployment failure'):
+                deployer.deploy()
+        deployer.tls_manager.debug_certificates.assert_called_once_with()
+
+    def test_tls_disabled_operator_deployment_creates_proxy_certificates(self):
+        args = SimpleNamespace(
+            skip_operator_deployment=False,
+            multi_user=False,
+            proxy=False,
+            enable_modular_architecture=False,
+            pod_to_pod_tls_enabled=False,
+            pipeline_store='database',
+            deploy_external_db=False,
+            github_repository='opendatahub-io/data-science-pipelines',
+            operator_branch='main',
+            namespace='test-ns',
+            dspa_name='test-dspa',
+        )
+        deployer = DSPDeployer(args)
+        deployer.deployment_manager = MagicMock()
+        deployer.deployment_manager.wait_for_resource.return_value = True
+        with patch(
+                'deploy.tempfile.mkdtemp', return_value='/tmp/pr465-unit-test'):
+            deployer.setup_environment()
+        self.assertIsInstance(deployer.tls_manager, TLSCertificateManager)
+        deploy_cert_manager = deployer.infra.deploy_cert_manager
+
+        deployer.temp_dir = None
+        deployer.operator = MagicMock()
+        deployer.infra = MagicMock()
+        deployer.infra.deploy_cert_manager.side_effect = deploy_cert_manager
+        deployer.database = MagicMock()
+        deployer.storage = MagicMock()
+        deployer.dspa = MagicMock()
+        with patch.object(deployer, 'setup_environment'), \
+             patch.object(deployer, '_init_deployers_after_clone'), \
+             patch.object(deployer, '_patch_v1_allowed_namespaces'), \
+             patch.object(deployer.tls_manager, 'setup_tls_for_kind') as setup:
+            setup_order = MagicMock()
+            setup_order.attach_mock(deployer.deployment_manager.apply_resource,
+                                    'install')
+            setup_order.attach_mock(
+                deployer.deployment_manager.wait_for_resource, 'wait')
+            setup_order.attach_mock(setup, 'certificates')
+            deployer.deploy()
+        setup.assert_called_once_with()
+        deployer.deployment_manager.apply_resource.assert_called_once_with(
+            manifest_path='https://github.com/cert-manager/cert-manager/releases/download/v1.16.3/cert-manager.yaml',
+            description='cert-manager')
+        self.assertEqual([entry[0] for entry in setup_order.mock_calls],
+                         ['install', 'wait', 'wait', 'certificates'])
+        deployer.dspa.deploy_dsp_via_operator.assert_called_once_with()
 
 
 class TestExpectedPlatformReleaseVersionOutput(unittest.TestCase):
