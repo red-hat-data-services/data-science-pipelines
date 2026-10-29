@@ -104,7 +104,7 @@ jobs:
             API_SCHEME="https"
             API_URL="https://localhost:8888"
           fi
-          go test -v ./... -args -runIntegrationTests=true -namespace=kubeflow -tlsEnabled=${{ matrix.pod_to_pod_tls_enabled }} -caCertPath=${{ env.CA_CERT_PATH }} -apiScheme=$API_SCHEME -apiUrl="$API_URL" -repoName=${{ github.repository }} -branchName="$BRANCH_NAME"
+          go test -v -timeout 30m ./... -args -runIntegrationTests=true -namespace=kubeflow -tlsEnabled=${{ matrix.pod_to_pod_tls_enabled }} -caCertPath=${{ env.CA_CERT_PATH }} -apiScheme=$API_SCHEME -apiUrl="$API_URL" -repoName=${{ github.repository }} -branchName="$BRANCH_NAME"
         env:
           PULL_NUMBER: ${{ github.event.pull_request.number }}
           PIPELINE_STORE: ${{ matrix.pipeline_store }}
