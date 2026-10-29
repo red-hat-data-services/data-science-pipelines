@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-10-28
+- Last updated: 2026-03-31
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
@@ -499,7 +499,6 @@ When changing an effect-heavy frontend component, add or run the smallest releva
 
 - Workflows: `.github/workflows/` (build, test, lint, release)
 - Composite actions: `.github/actions/` (e.g., `kfp-k8s`, `create-cluster`, `deploy`, `test-and-report`)
-- The `deploy` action sets up Go with `actions/setup-go@v6` using the version in `go.mod`; there is no local `setup-go` action.
 - Typical checks: Go unit tests (backend), Python SDK tests, frontend tests/lint, image builds.
 - Frontend workflow (`frontend.yml`) verifies generated API clients are up to date by running `npm run apis:all` and failing on diff.
 
