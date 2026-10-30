@@ -59,19 +59,27 @@ class OperatorDeployer:
                                      'data-science-pipelines-operator')
         operator_branch = self._operator_branch(self.target_branch)
         preferred_owner = getattr(self.args, 'operator_repo_owner', None)
-        upstream_owner = getattr(self.args, 'operator_upstream_owner',
-                                 None) or self.repo_owner
-        candidate_owners = []
+        upstream_owner = getattr(
+            self.args, 'operator_upstream_owner', None) or self.repo_owner
+        candidate_sources = []
         source_owners = ((upstream_owner,) if self.args.operator_branch_required
                          else (preferred_owner, upstream_owner))
         for owner in source_owners:
-            if owner and owner not in candidate_owners:
-                candidate_owners.append(owner)
+            if owner and (owner, operator_branch) not in candidate_sources:
+                candidate_sources.append((owner, operator_branch))
 
-        for owner in candidate_owners:
-            print(f'🔍 Checking {owner}/data-science-pipelines-operator '
-                  f'for branch {operator_branch}')
-            if self._clone_from_branch(owner, operator_branch, operator_path):
+        if not self.args.operator_branch_required:
+            base_branch = getattr(self.args, 'operator_base_branch', '') or ''
+            if base_branch:
+                base_source = (upstream_owner, self._operator_branch(base_branch))
+                if base_source not in candidate_sources:
+                    candidate_sources.append(base_source)
+
+        for owner, branch in candidate_sources:
+            print(
+                f'🔍 Checking {owner}/data-science-pipelines-operator '
+                f'for branch {branch}')
+            if self._clone_from_branch(owner, branch, operator_path):
                 break
         else:
             if self.args.operator_branch_required:
