@@ -121,8 +121,9 @@ class DSPDeployer:
                                          self.repo_owner, self.target_branch,
                                          self.temp_dir, self.operator_namespace)
 
-        self.storage = StorageDeployer(self.args, self.deployment_manager,
-                                       self.deployment_namespace, self.temp_dir)
+        self.storage = StorageDeployer(
+            self.args, self.deployment_manager, self.deployment_namespace,
+            self.operator_namespace, self.temp_dir)
 
         self.infra = InfraDeployer(self.args, self.deployment_manager, None,
                                    self.deployment_namespace, self.dspa_name,
@@ -355,8 +356,10 @@ def main():
     parser.add_argument(
         '--operator-branch', required=True, help='DSPO source branch')
     parser.add_argument(
-        '--operator-branch-required',
-        required=True,
+        '--operator-base-branch', default='',
+        help='PR base branch to try when the DSPO head branch is unavailable')
+    parser.add_argument(
+        '--operator-branch-required', required=True,
         help='Fail instead of falling back when DSPO source branch is absent')
     parser.add_argument(
         '--operator-repo-owner',

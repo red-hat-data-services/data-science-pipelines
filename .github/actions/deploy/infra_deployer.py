@@ -94,6 +94,7 @@ class InfraDeployer:
                                           'resources', 'webhook')
 
         if os.path.exists(webhook_certs_path):
+            self._set_kustomize_namespace(webhook_certs_path)
             self.deployment_manager.apply_resource(
                 manifest_path=webhook_certs_path,
                 namespace=self.operator_namespace,
@@ -104,6 +105,15 @@ class InfraDeployer:
             print(
                 f'⚠️  Webhook certificates path not found: {webhook_certs_path}'
             )
+
+    def _set_kustomize_namespace(self, manifest_path: str):
+        """Align namespaced operator resources with the installed DSPO."""
+        kustomization_path = os.path.join(manifest_path, 'kustomization.yaml')
+        with open(kustomization_path) as kustomization_file:
+            kustomization = yaml.safe_load(kustomization_file)
+        kustomization['namespace'] = self.operator_namespace
+        with open(kustomization_path, 'w') as kustomization_file:
+            yaml.safe_dump(kustomization, kustomization_file)
 
     def deploy_argo_lite(self):
         """Deploy Argo Lite using operator repository resources."""
@@ -119,6 +129,9 @@ class InfraDeployer:
         if not os.path.exists(argo_lite_path):
             raise ValueError(
                 f'Argo Lite resources directory not found: {argo_lite_path}')
+
+        # kubectl -n cannot override a namespace set by Kustomize.
+        self._set_kustomize_namespace(argo_lite_path)
 
         self.deployment_manager.apply_resource(
             manifest_path=argo_lite_path,

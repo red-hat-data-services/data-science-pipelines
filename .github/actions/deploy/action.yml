@@ -188,6 +188,7 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         OPERATOR_BRANCH: ${{ inputs.operator_branch || github.head_ref || github.ref_name }}
+        OPERATOR_BASE_BRANCH: ${{ github.base_ref }}
         OPERATOR_BRANCH_REQUIRED: ${{ inputs.operator_branch != '' }}
         OPERATOR_REPO_OWNER: ${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
         OPERATOR_UPSTREAM_OWNER: ${{ github.repository_owner == 'red-hat-data-services' && 'red-hat-data-services' || 'opendatahub-io' }}
@@ -226,6 +227,7 @@ runs:
         python3 ./.github/actions/deploy/deploy.py \
           --github-repository "$GITHUB_REPOSITORY" \
           --operator-branch "$OPERATOR_BRANCH" \
+          --operator-base-branch "$OPERATOR_BASE_BRANCH" \
           --operator-branch-required "$OPERATOR_BRANCH_REQUIRED" \
           --operator-repo-owner "$OPERATOR_REPO_OWNER" \
           --operator-upstream-owner "$OPERATOR_UPSTREAM_OWNER" \

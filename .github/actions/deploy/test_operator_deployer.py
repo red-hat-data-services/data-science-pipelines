@@ -15,11 +15,13 @@ def _make_deployer(repo_owner='opendatahub-io',
                    target_branch='master',
                    operator_repo_owner=None,
                    operator_upstream_owner='opendatahub-io',
+                   operator_base_branch='',
                    operator_branch_required=False):
     """Create an OperatorDeployer with stubbed dependencies."""
     args = MagicMock()
     args.operator_repo_owner = operator_repo_owner
     args.operator_upstream_owner = operator_upstream_owner
+    args.operator_base_branch = operator_base_branch
     args.operator_branch_required = operator_branch_required
     args.cluster_name = 'kfp-test'
     args.deploy_external_argo = False
@@ -86,10 +88,57 @@ class TestOperatorSourceSelection(unittest.TestCase):
         ])
 
     @patch('operator_deployer.os.path.exists', return_value=False)
+    def test_clone_uses_pr_base_before_default_branch(self, _):
+        deployer = _make_deployer(
+            repo_owner='red-hat-data-services',
+            target_branch='rhoai-3.6-fix-ci',
+            operator_repo_owner='contributor',
+            operator_upstream_owner='red-hat-data-services',
+            operator_base_branch='rhoai-3.6')
+        with patch.object(
+                deployer, '_clone_from_branch', side_effect=[False, False,
+                                                              True]) as clone:
+            deployer.clone_operator_repo()
+
+        self.assertEqual(clone.call_args_list, [
+            call('contributor', 'rhoai-3.6-fix-ci',
+                 '/tmp/test/data-science-pipelines-operator'),
+            call('red-hat-data-services', 'rhoai-3.6-fix-ci',
+                 '/tmp/test/data-science-pipelines-operator'),
+            call('red-hat-data-services', 'rhoai-3.6',
+                 '/tmp/test/data-science-pipelines-operator'),
+        ])
+        deployer.deployment_manager.run_command.assert_not_called()
+
+    @patch('operator_deployer.os.path.exists', return_value=False)
+    def test_clone_uses_default_if_pr_base_is_missing(self, _):
+        deployer = _make_deployer(
+            target_branch='feature',
+            operator_repo_owner='contributor',
+            operator_base_branch='stable')
+        with patch.object(
+                deployer, '_clone_from_branch', return_value=False) as clone:
+            deployer.clone_operator_repo()
+
+        self.assertEqual(clone.call_args_list, [
+            call('contributor', 'feature',
+                 '/tmp/test/data-science-pipelines-operator'),
+            call('opendatahub-io', 'feature',
+                 '/tmp/test/data-science-pipelines-operator'),
+            call('opendatahub-io', 'stable',
+                 '/tmp/test/data-science-pipelines-operator'),
+        ])
+        deployer.deployment_manager.run_command.assert_called_once_with([
+            'git', 'clone', '--depth', '1', '--branch', 'main',
+            'https://github.com/opendatahub-io/data-science-pipelines-operator.git',
+            '/tmp/test/data-science-pipelines-operator'
+        ])
+
+    @patch('operator_deployer.os.path.exists', return_value=False)
     def test_explicit_branch_does_not_fall_back(self, _):
         deployer = _make_deployer(
-            target_branch='stable',
-            operator_repo_owner='contributor',
+            target_branch='stable', operator_repo_owner='contributor',
+            operator_base_branch='main',
             operator_branch_required=True)
         with patch.object(
                 deployer, '_clone_from_branch', return_value=False) as clone:
@@ -378,7 +427,9 @@ class TestActionBranchWiring(unittest.TestCase):
 
         self.assertNotIn('GITHUB_BASE_REF', action)
         self.assertIn('OPERATOR_BRANCH:', action)
+        self.assertIn('OPERATOR_BASE_BRANCH: ${{ github.base_ref }}', action)
         self.assertIn('--operator-branch "$OPERATOR_BRANCH"', action)
+        self.assertIn('--operator-base-branch "$OPERATOR_BASE_BRANCH"', action)
 
     def test_operator_deployment_remains_opt_in_by_default(self):
         action = self._action_text()
