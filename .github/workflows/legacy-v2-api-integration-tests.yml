@@ -33,7 +33,7 @@ jobs:
     uses: ./.github/workflows/image-builds.yml
 
   api-integration-tests-v2:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     strategy:
       matrix:
