@@ -705,4 +705,5 @@ docformatter --check --recursive sdk/python/ --exclude "compiler_test.py"
   regenerate `package-lock.json`, and commit the result.
 - CI image-build jobs fail while pulling `moby/buildkit`, `kindest/node`, `python:3.11`, or `alpine:3.23`: treat these as registry flakes first; current CI retries those pulls/builds automatically, and Kind node bootstrap falls back to `gcr.io/k8s-staging-kind/node`.
 - Operator CI deployment fails applying Argo Lite or webhook resources with `opendatahub`/`rhods` namespace mismatch: the operator checkout's kustomizations must use the operator deployment namespace; `kubectl -n` alone does not override a declared namespace.
+- Operator CI's DSPA deployment waits indefinitely when object storage health checks time out: allow the operator's actual namespace (`rhods` or `opendatahub`) through the SeaweedFS ingress policy on container port 8333 (Service port 9000).
 - Runtime component imports SDK-only modules: `_KFP_RUNTIME=true` disables many SDK imports; avoid importing SDK-only modules in task code.

@@ -16,10 +16,12 @@ from deployment_manager import WaitCondition
 class StorageDeployer:
 
     def __init__(self, args, deployment_manager: K8sDeploymentManager,
-                 deployment_namespace: str, temp_dir: str):
+                 deployment_namespace: str, operator_namespace: str,
+                 temp_dir: str):
         self.args = args
         self.deployment_manager = deployment_manager
         self.deployment_namespace = deployment_namespace
+        self.operator_namespace = operator_namespace
         self.temp_dir = temp_dir
 
     def deploy_seaweedfs(self):
@@ -85,8 +87,8 @@ class StorageDeployer:
     def update_seaweedfs_network_policy(self):
         """Update SeaweedFS network policy to allow DSPO operator access.
 
-        Adds ingress rules for the opendatahub namespace and pod-to-pod
-        access on ports 8333 (S3), 8888 (filer), and 9333 (master).
+        Allows the operator namespace on port 8333 (S3) and same-namespace
+        pods on ports 8333, 8888 (filer), and 9333 (master).
         """
         print('🔒 Updating SeaweedFS network policy for DSPO operator access...')
 
@@ -119,7 +121,7 @@ class StorageDeployer:
                                 'matchExpressions': [{
                                     'key': 'kubernetes.io/metadata.name',
                                     'operator': 'In',
-                                    'values': ['opendatahub']
+                                    'values': [self.operator_namespace]
                                 }]
                             }
                         }],
@@ -155,7 +157,7 @@ class StorageDeployer:
         self.deployment_manager.apply_resource(
             manifest_path=policy_file,
             namespace=self.deployment_namespace,
-            description='Updated SeaweedFS network policy with opendatahub access')
+            description=f'Updated SeaweedFS network policy with {self.operator_namespace} access')
 
         print('✅ SeaweedFS network policy updated successfully')
 
