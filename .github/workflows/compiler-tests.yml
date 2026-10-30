@@ -41,7 +41,7 @@ on:
 
 jobs:
   compiler-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Workflow Compiler Tests
 
     steps:

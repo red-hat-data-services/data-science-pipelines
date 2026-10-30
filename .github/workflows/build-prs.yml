@@ -13,7 +13,7 @@ env:
 jobs:
   fetch-data:
     name: Fetch workflow payload
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
@@ -59,7 +59,7 @@ jobs:
   build-pr-images:
     name: Build DSP Images
     if: needs.fetch-data.outputs.pr_state == 'open'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: fetch-data
     env:
       SOURCE_BRANCH: ${{ needs.fetch-data.outputs.head_sha }}
@@ -94,7 +94,7 @@ jobs:
   
   comment-on-pr:
     name: Comment on PR after images built
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [fetch-data, build-pr-images]
     concurrency:
       group: ${{ github.workflow }}-comment-on-pr-${{ needs.fetch-data.outputs.pr_number }}
@@ -211,7 +211,7 @@ jobs:
   clean-pr-images:
     name: Cleanup images if PR is closed
     if: needs.fetch-data.outputs.pr_state == 'closed'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: fetch-data
     env:
       TARGET_IMAGE_TAG: pr-${{ needs.fetch-data.outputs.pr_number }}
