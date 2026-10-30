@@ -32,7 +32,9 @@ concurrency:
 
 jobs:
   validate-generated-files:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    env:
+      API_GENERATOR_IMAGE: kfp-api-generator
     strategy:
       fail-fast: false
 
@@ -47,6 +49,15 @@ jobs:
         with:
           python-version: 3.9
           cache: 'pip'
+
+      # Build this branch's generator with tool versions matching its checked-in clients.
+      - name: Build API generator image
+        run: |
+          make -C backend/api image
+          docker build --tag kfp-api-generator --file - . <<'EOF'
+          FROM kfp-api-generator
+          COPY --from=ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff /uv /usr/local/bin/uv
+          EOF
 
       - name: Install protobuf dependencies & kfp-pipeline-spec
         id: install-protobuf-deps
@@ -92,7 +103,7 @@ jobs:
         run: make check-diff
 
   validate-backwards-compabitiblity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 

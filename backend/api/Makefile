@@ -21,7 +21,7 @@ REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator
 API_VERSION ?= v2beta1
 
 # Keep in sync with the version used in test/release/Dockerfile.release
-PREBUILT_REMOTE_IMAGE=ghcr.io/kubeflow/kfp-api-generator:master
+API_GENERATOR_IMAGE ?= ghcr.io/kubeflow/kfp-api-generator:master
 RELEASE_IMAGE=ghcr.io/kubeflow/kfp-release:master
 CONTAINER_ENGINE ?= docker
 
@@ -32,7 +32,7 @@ generate: fetch-dependencies hack/generator.sh $(API_VERSION)/*.proto
 		-e API_VERSION=$(API_VERSION) \
 		--user $$(id -u):$$(id -g) \
 		--mount type=bind,source="$$(pwd)/../..",target=/go/src/github.com/kubeflow/pipelines \
-		$(PREBUILT_REMOTE_IMAGE) /go/src/github.com/kubeflow/pipelines/backend/api/hack/generator.sh
+		$(API_GENERATOR_IMAGE) /go/src/github.com/kubeflow/pipelines/backend/api/hack/generator.sh
 
 # Use the release image since it has some additional dependencies
 # required by kfp-pipeline-ser generation
