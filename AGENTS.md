@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-03-31
+- Last updated: 2026-10-15
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
@@ -282,6 +282,7 @@ Notes:
 ## Regenerate protobufs after schema changes
 
 - Pipeline spec Protobufs live under `api/`.
+- Keep `GRPC_GATEWAY_VERSION` and `GRPC_VERSION` in `backend/api/Dockerfile` aligned with the corresponding dependencies in the root `go.mod` (currently `v2.28.0` and `v1.80.0`).
 - Run both Python and Go generations:
 
 ```bash
