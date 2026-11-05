@@ -16,17 +16,35 @@
 package constants
 
 const (
+	// Smoke - quality gate tag for smoke testing
+	Smoke string = "smoke"
+	// Tier1 - high-priority tests excluding Smoke
+	Tier1 string = "Tier1"
+	// Tier2 - medium- and low-priority positive tests
+	Tier2 string = "Tier2"
+	// Tier3 - negative and destructive tests
+	Tier3 string = "Tier3"
+	// Disconnected - air-gapped cluster lane (orchestration); specs also carry Smoke
+	Disconnected string = "disconnected"
+	// Integration - quality gate tag for integration testing with other components
+	Integration = "integration"
 	// E2eEssential - For pipelines that are essential for regression testing
 	E2eEssential string = "E2EEssential"
 	// E2eFailed - For expectedly failing pipelines
 	E2eFailed string = "E2EFailure"
 	// E2eCritical - For pipelines that verify the critical functionality of the system
 	E2eCritical string = "E2ECritical"
+	// E2eParallelNested - For parallel or nested pipelines for regression testing
+	E2eParallelNested string = "E2EParallelNested"
 	// E2eProxy - For pipeline that runs with a proxy
 	E2eProxy string = "E2EProxy"
+	// E2eGpu - For pipelines that require GPU-capable clusters (accelerator workloads)
+	E2eGpu string = "gpu"
+	// E2eDraCheck - DRA (Dynamic Resource Allocation) checks (e.g. Kind + dra-example-driver).
+	E2eDraCheck string = "dra-check"
 
-	WorkflowCompiler       string = "WorkflowCompiler"
-	WorkflowCompilerVisits string = "WorkflowCompilerVisits"
+	WorkflowCompiler       string = "WorkflowCompiler"       // compiler CI lane; golden sweep also tagged Tier1
+	WorkflowCompilerVisits string = "WorkflowCompilerVisits" // compiler visitor specs also tagged Tier2
 
 	APIServerTests string = "ApiServerTests"
 
@@ -37,6 +55,18 @@ const (
 	PipelineUpload       string = "PipelineUpload"
 	ReportTests          string = "Report"
 
-	UpgradePreparation  string = "UpgradePreparation"
-	UpgradeVerification string = "UpgradeVerification"
+	UpgradePreparation  string = "UpgradePreparation"  // product upgrade prep lane; also tagged Tier1
+	UpgradeVerification string = "UpgradeVerification" // product upgrade verify lane; also tagged Tier1
+
+	// MLflow - quality gate tag for MLflow integration testing
+	MLflow string = "MLflow"
+	// MLflowCore — primary MLflow E2E paths
+	MLflowCore string = "MLflowCore"
+	// MLflowParallelLoop — parallel-for pipeline and multi-level nested MLflow run assertions.
+	MLflowParallelLoop string = "MLflowParallelLoop"
+	// MLflowFailure — failed pipelines and RetryRun semantics with MLflow tracking.
+	MLflowFailure string = "MLflowFailure"
+
+	// FilteredTests is a skip-message marker that excludes a test from JUnit/JSON reports.
+	FilteredTests string = "[filtered]"
 )

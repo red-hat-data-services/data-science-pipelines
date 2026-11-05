@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kubeflow/pipelines/backend/api/v2beta1/go_http_client/experiment_model"
@@ -34,10 +35,93 @@ import (
 
 	"github.com/go-openapi/strfmt"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/types"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// e2eSmokePipelinePaths are Smoke IRs relative to valid/. Folder sweeps skip
+// these same paths so Smoke stays Smoke-only (single source of truth).
+var e2eSmokePipelinePaths = []string{
+	"essential/iris_pipeline_compiled.yaml",
+	"essential/component_with_pip_index_urls.yaml",
+	"critical/flip_coin.yaml",
+	"critical/pipeline_with_artifact_upload_download.yaml",
+	"critical/parallel_for_after_dependency.yaml",
+}
+
+// e2eTier1PipelinePaths are former Sanity IRs relative to valid/ that are not
+// already covered by Smoke or the Essential Tier1 sweep. Folder sweeps skip
+// these same paths so they stay Tier1-only (single source of truth).
+var e2eTier1PipelinePaths = []string{
+	"parallel_and_nested/pipeline_in_pipeline.yaml",
+	"critical/pipeline_with_secret_as_env.yaml",
+	"critical/pipeline_with_input_status_state.yaml",
+	"critical/notebook_component_simple.yaml",
+}
+
+// e2eDisconnectedPipelinePaths are Smoke-tier IRs for air-gapped product lanes.
+// Each entry must appear in e2eSmokePipelinePaths (see unit tests).
+var e2eDisconnectedPipelinePaths = []string{
+	"essential/component_with_pip_index_urls.yaml",
+	"critical/flip_coin.yaml",
+}
+
+var (
+	e2eSmokePipelinePathSet = e2ePipelinePathSet(e2eSmokePipelinePaths)
+	e2eTier1PipelinePathSet = e2ePipelinePathSet(e2eTier1PipelinePaths)
+	e2eMultiUserCriticalPathSet = e2eCriticalSubsetPathSet(e2eSmokePipelinePaths, e2eTier1PipelinePaths)
+)
+
+func e2ePipelinePathSet(paths []string) map[string]struct{} {
+	pathSet := make(map[string]struct{}, len(paths))
+	for _, path := range paths {
+		pathSet[filepath.Clean(path)] = struct{}{}
+	}
+	return pathSet
+}
+
+func e2eCriticalSubsetPathSet(pathGroups ...[]string) map[string]struct{} {
+	pathSet := make(map[string]struct{})
+	for _, group := range pathGroups {
+		for _, path := range group {
+			cleaned := filepath.Clean(path)
+			if strings.HasPrefix(cleaned, "critical/") {
+				pathSet[cleaned] = struct{}{}
+			}
+		}
+	}
+	return pathSet
+}
+
+// e2eRelativePathUnderValid returns pipelineFile under pipelineDir as a path
+// relative to valid/ (for example essential/iris_pipeline_compiled.yaml).
+func e2eRelativePathUnderValid(pipelineDir, pipelineFile string) string {
+	cleanedDir := filepath.Clean(pipelineDir)
+	relativeDir := cleanedDir
+	if cleanedDir == "valid" {
+		relativeDir = ""
+	} else if strings.HasPrefix(cleanedDir, "valid"+string(filepath.Separator)) {
+		relativeDir = cleanedDir[len("valid")+1:]
+	}
+	if relativeDir == "" {
+		return filepath.Clean(pipelineFile)
+	}
+	return filepath.Clean(filepath.Join(relativeDir, pipelineFile))
+}
+
+func e2ePathInSet(pathSet map[string]struct{}, pipelineDir, pipelineFile string) bool {
+	_, found := pathSet[e2eRelativePathUnderValid(pipelineDir, pipelineFile)]
+	return found
+}
+
+// e2eRelativePathInMultiUserCriticalSet reports IRs that product multi-user jobs
+// still select with --label-filter=E2ECritical alongside Smoke or Tier1 gates.
+func e2eRelativePathInMultiUserCriticalSet(relativePath string) bool {
+	_, found := e2eMultiUserCriticalPathSet[filepath.Clean(relativePath)]
+	return found
+}
 
 var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func() {
 	var testContext *apitests.TestContext
@@ -53,7 +137,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func
 		logger.Log("Test Context: %p", testContext)
 		randomName = strconv.FormatInt(time.Now().UnixNano(), 10)
 		testContext.Pipeline.UploadParams = upload_params.NewUploadPipelineParams()
-		testContext.Pipeline.PipelineGeneratedName = "e2e_test-" + randomName
+		testContext.Pipeline.PipelineGeneratedName = "e2e-test-" + randomName
 		testContext.Pipeline.CreatedPipelines = make([]*pipeline_upload_model.V2beta1Pipeline, 0)
 		testContext.PipelineRun.CreatedRunIds = make([]string, 0)
 		testContext.Pipeline.ExpectedPipeline = new(pipeline_upload_model.V2beta1Pipeline)
@@ -90,83 +174,119 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func
 		for _, secret := range secrets {
 			testutil.CreateSecret(k8Client, testutil.GetNamespace(), secret)
 		}
+
+		DeferCleanup(cleanupE2ETestResources, testContext)
 	})
 
-	AfterEach(func() {
-
-		// Delete pipelines created during the test
-		logger.Log("################### Global Cleanup after each test #####################")
-
-		logger.Log("Deleting %d run(s)", len(testContext.PipelineRun.CreatedRunIds))
-		for _, runID := range testContext.PipelineRun.CreatedRunIds {
-			runID := runID
-			testutil.TerminatePipelineRun(runClient, runID)
-			testutil.ArchivePipelineRun(runClient, runID)
-			testutil.DeletePipelineRun(runClient, runID)
+	ReportAfterEach(func(specReport types.SpecReport) {
+		if testContext == nil {
+			return
 		}
-		logger.Log("Deleting %d experiment(s)", len(testContext.Experiment.CreatedExperimentIds))
-		if len(testContext.Experiment.CreatedExperimentIds) > 0 {
-			for _, experimentID := range testContext.Experiment.CreatedExperimentIds {
-				experimentID := experimentID
-				testutil.DeleteExperiment(experimentClient, experimentID)
-			}
-		}
-		logger.Log("Deleting %d pipeline(s)", len(testContext.Pipeline.CreatedPipelines))
-		for _, pipeline := range testContext.Pipeline.CreatedPipelines {
-			pipelineID := pipeline.PipelineID
-			testutil.DeletePipeline(pipelineClient, pipelineID)
+		if specReport.Failed() && len(testContext.PipelineRun.CreatedRunIds) > 0 {
+			report, _ := testutil.BuildArchivedWorkflowLogsReport(k8Client, testContext.PipelineRun.CreatedRunIds)
+			AddReportEntry(testutil.ArchivedWorkflowLogsReportTitle, report)
 		}
 	})
 
 	// ################## TESTS ##################
 
-	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", Label(E2eEssential), func() {
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", FlakeAttempts(2), Label(E2eEssential, Tier1), func() {
 		var pipelineDir = "valid/essential"
 		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
 		for _, pipelineFile := range pipelineFiles {
+			if e2ePathInSet(e2eSmokePipelinePathSet, pipelineDir, pipelineFile) {
+				continue
+			}
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
-				testutil.CheckIfSkipping(pipelineFile)
-				pipelineFilePath := filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir, pipelineFile)
-				logger.Log("Uploading pipeline file %s", pipelineFile)
-				uploadedPipeline, uploadErr := testutil.UploadPipeline(pipelineUploadClient, pipelineFilePath, &testContext.Pipeline.PipelineGeneratedName, nil)
-				Expect(uploadErr).To(BeNil(), "Failed to upload pipeline %s", pipelineFile)
-				testContext.Pipeline.CreatedPipelines = append(testContext.Pipeline.CreatedPipelines, uploadedPipeline)
-				logger.Log("Upload of pipeline file '%s' successful", pipelineFile)
-				uploadedPipelineVersion := testutil.GetLatestPipelineVersion(pipelineClient, &uploadedPipeline.PipelineID)
-				pipelineRuntimeInputs := testutil.GetPipelineRunTimeInputs(pipelineFilePath)
-				createdRunID := e2e_utils.CreatePipelineRunAndWaitForItToFinish(runClient, testContext, uploadedPipeline.PipelineID, uploadedPipeline.DisplayName, &uploadedPipelineVersion.PipelineVersionID, experimentID, pipelineRuntimeInputs, maxPipelineWaitTime)
-				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
-				compiledWorkflow := workflowutils.UnmarshallWorkflowYAML(filepath.Join(testutil.GetCompiledWorkflowsFilesDir(), pipelineFile))
-				e2e_utils.ValidateComponentStatuses(runClient, k8Client, testContext, createdRunID, compiledWorkflow)
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	Context("Upload a nested or a parallel pipeline file, run it and verify that pipeline run succeeds >", FlakeAttempts(2), Label(E2eParallelNested, Tier2), func() {
+		var pipelineDir = "valid/parallel_and_nested"
+		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
+		for _, pipelineFile := range pipelineFiles {
+			if e2ePathInSet(e2eTier1PipelinePathSet, pipelineDir, pipelineFile) {
+				continue
+			}
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
 			})
 		}
 	})
 
 	// Few of the following pipelines randomly fail in Multi User Mode during CI run - which is why a FlakeAttempt is added, but we need to investigate, create ticket and fix it in the future
-	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", FlakeAttempts(2), Label("Sample", E2eCritical), func() {
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds >", FlakeAttempts(2), Label("Sample", E2eCritical, Tier2), func() {
 		var pipelineDir = "valid/critical"
 		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
 		for _, pipelineFile := range pipelineFiles {
+			if e2ePathInSet(e2eSmokePipelinePathSet, pipelineDir, pipelineFile) {
+				continue
+			}
+			if e2ePathInSet(e2eTier1PipelinePathSet, pipelineDir, pipelineFile) {
+				continue
+			}
 			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
-				testutil.CheckIfSkipping(pipelineFile)
-				pipelineFilePath := filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir, pipelineFile)
-				logger.Log("Uploading pipeline file %s", pipelineFile)
-				uploadedPipeline, uploadErr := testutil.UploadPipeline(pipelineUploadClient, pipelineFilePath, &testContext.Pipeline.PipelineGeneratedName, nil)
-				Expect(uploadErr).To(BeNil(), "Failed to upload pipeline %s", pipelineFile)
-				testContext.Pipeline.CreatedPipelines = append(testContext.Pipeline.CreatedPipelines, uploadedPipeline)
-				logger.Log("Upload of pipeline file '%s' successful", pipelineFile)
-				uploadedPipelineVersion := testutil.GetLatestPipelineVersion(pipelineClient, &uploadedPipeline.PipelineID)
-				pipelineRuntimeInputs := testutil.GetPipelineRunTimeInputs(pipelineFilePath)
-				createdRunID := e2e_utils.CreatePipelineRunAndWaitForItToFinish(runClient, testContext, uploadedPipeline.PipelineID, uploadedPipeline.DisplayName, &uploadedPipelineVersion.PipelineVersionID, experimentID, pipelineRuntimeInputs, maxPipelineWaitTime)
-				logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
-				compiledWorkflow := workflowutils.UnmarshallWorkflowYAML(filepath.Join(testutil.GetCompiledWorkflowsFilesDir(), pipelineFile))
-				e2e_utils.ValidateComponentStatuses(runClient, k8Client, testContext, createdRunID, compiledWorkflow)
-
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
 			})
 		}
 	})
 
-	Context("Create a pipeline run with HTTP proxy >", Label(E2eProxy), func() {
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds Smoke >", FlakeAttempts(2), Label(Smoke), func() {
+		var pipelineDir = "valid"
+		for _, pipelineFile := range e2eSmokePipelinePaths {
+			pipelineFile := pipelineFile
+			if e2eRelativePathInMultiUserCriticalSet(pipelineFile) {
+				It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), Label(Smoke, E2eCritical), func() {
+					validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+				})
+				continue
+			}
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), Label(Smoke), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds on a Disconnected cluster>", FlakeAttempts(2), Label(Disconnected, Smoke), func() {
+		var pipelineDir = "valid"
+		for _, pipelineFile := range e2eDisconnectedPipelinePaths {
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	// Former Sanity IRs that are not already covered by Smoke or the Essential
+	// Tier1 sweep. component_with_pip_index_urls stays Smoke-only.
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds Tier1 >", FlakeAttempts(2), Label(Tier1), func() {
+		var pipelineDir = "valid"
+		for _, pipelineFile := range e2eTier1PipelinePaths {
+			pipelineFile := pipelineFile
+			if e2eRelativePathInMultiUserCriticalSet(pipelineFile) {
+				It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), Label(Tier1, E2eCritical), func() {
+					validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+				})
+				continue
+			}
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), Label(Tier1), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	Context("Upload a pipeline file, run it and verify that pipeline run succeeds Smoke >", FlakeAttempts(1), Label(Integration, Tier1), func() {
+		var pipelineDir = "valid/integration"
+		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
+		for _, pipelineFile := range pipelineFiles {
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	Context("Create a pipeline run with HTTP proxy >", Label(E2eProxy, Tier2), func() {
 		var pipelineDir = "valid"
 		pipelineFile := "env-var.yaml"
 		It(fmt.Sprintf("Create a pipeline run with http proxy, using specs: %s", pipelineFile), func() {
@@ -196,7 +316,7 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func
 		})
 	})
 
-	Context("Upload a pipeline file, run it and verify that pipeline run fails >", Label(E2eFailed), func() {
+	Context("Upload a pipeline file, run it and verify that pipeline run fails >", Label(E2eFailed, Tier3), func() {
 		var pipelineDir = "valid/failing"
 		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
 		for _, pipelineFile := range pipelineFiles {
@@ -219,4 +339,108 @@ var _ = Describe("Upload and Verify Pipeline Run >", Label(FullRegression), func
 			})
 		}
 	})
+
+	// E2eGpu-labeled specs run even when the package has no --label-filter; see
+	// AGENTS.md (Local testing → Backend Ginkgo test suites → End-to-end tests).
+	// Also tagged Tier2 for product gates; CPU/Kind Tier2 lanes should filter
+	// with `Tier2 && !gpu && !dra-check` so these fixtures are not scheduled
+	// without GPUs.
+	Context("GPU component test >", Label(E2eGpu, Tier2), func() {
+		var pipelineDir = "valid/gpu"
+		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
+		for _, pipelineFile := range pipelineFiles {
+			if !gpuPipelineFixtureSelected(pipelineFile) {
+				continue
+			}
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
+				validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+			})
+		}
+	})
+
+	// Filter with --label-filter=dra-check. Requires a cluster with a DRA
+	// driver installed (e.g. Kind + dra-example-driver). Also tagged Tier2;
+	// CPU/Kind Tier2 lanes should use `Tier2 && !gpu && !dra-check`.
+	Context("DRA scheduling check >", Label(E2eDraCheck, Tier2), func() {
+		var pipelineDir = "valid/dra"
+		pipelineFiles := testutil.GetListOfFilesInADir(filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir))
+		Expect(pipelineFiles).NotTo(BeEmpty(), "no pipeline files found in %s", pipelineDir)
+		for _, pipelineFile := range pipelineFiles {
+			It(fmt.Sprintf("Upload %s pipeline", pipelineFile), FlakeAttempts(2), func() {
+				runID := validatePipelineRunSuccess(pipelineFile, pipelineDir, testContext)
+				expectedClaims := []string{"dra-test-claim"}
+				if pipelineFile == "dra_static_claim_check.yaml" {
+					expectedClaims = append(expectedClaims, "dra-test-claim-secondary")
+				}
+				e2e_utils.ValidateDRAResourceClaims(k8Client, *config.Namespace, runID, expectedClaims)
+			})
+		}
+	})
 })
+
+// gpuPipelineFixtureSelected returns whether to run an E2E for this IR fixture.
+// Fixtures are vendored from ods-ci (NVIDIA vs AMD); only one vendor typically matches the cluster.
+// "nvidia" → pytorch_nvidia_gpu_availability.yaml only;
+// "amd" → pytorch_amd_gpu_availability.yaml only;
+// "both" → all yaml in valid/gpu.
+func gpuPipelineFixtureSelected(pipelineFile string) bool {
+	vendor := *config.GpuVendor
+	switch vendor {
+	case "amd":
+		return strings.Contains(pipelineFile, "amd")
+	case "both", "all":
+		return true
+	default:
+		return strings.Contains(pipelineFile, "nvidia")
+	}
+}
+
+func validatePipelineRunSuccess(pipelineFile string, pipelineDir string, testContext *apitests.TestContext) string {
+	testutil.CheckIfSkipping(pipelineFile)
+	pipelineFilePath := filepath.Join(testutil.GetPipelineFilesDir(), pipelineDir, pipelineFile)
+	logger.Log("Uploading pipeline file %s", pipelineFile)
+	uploadedPipeline, uploadErr := testutil.UploadPipeline(pipelineUploadClient, pipelineFilePath, &testContext.Pipeline.PipelineGeneratedName, nil)
+	Expect(uploadErr).To(BeNil(), "Failed to upload pipeline %s", pipelineFile)
+	testContext.Pipeline.CreatedPipelines = append(testContext.Pipeline.CreatedPipelines, uploadedPipeline)
+	logger.Log("Upload of pipeline file '%s' successful", pipelineFile)
+	uploadedPipelineVersion := testutil.GetLatestPipelineVersion(pipelineClient, &uploadedPipeline.PipelineID)
+	pipelineRuntimeInputs := testutil.GetPipelineRunTimeInputs(pipelineFilePath)
+	createdRunID := e2e_utils.CreatePipelineRunAndWaitForItToFinish(runClient, testContext, uploadedPipeline.PipelineID, uploadedPipeline.DisplayName, &uploadedPipelineVersion.PipelineVersionID, experimentID, pipelineRuntimeInputs, maxPipelineWaitTime)
+	logger.Log("Deserializing expected compiled workflow file '%s' for the pipeline", pipelineFile)
+	if strings.Contains(pipelineFile, "/") {
+		pipelineFile = strings.Split(pipelineFile, "/")[1]
+	}
+	compiledWorkflow := workflowutils.UnmarshallWorkflowYAML(filepath.Join(testutil.GetCompiledWorkflowsFilesDir(), pipelineFile))
+	e2e_utils.ValidateComponentStatuses(runClient, k8Client, testContext, createdRunID, compiledWorkflow)
+	return createdRunID
+}
+
+func cleanupE2ETestResources(testContext *apitests.TestContext) {
+	logger.Log("################### Global Cleanup after each test #####################")
+	cleanupE2ERuns(testContext)
+	cleanupE2EExperiments(testContext)
+	cleanupE2EPipelines(testContext)
+}
+
+func cleanupE2ERuns(testContext *apitests.TestContext) {
+	logger.Log("Deleting %d run(s)", len(testContext.PipelineRun.CreatedRunIds))
+	for _, runID := range testContext.PipelineRun.CreatedRunIds {
+		testutil.TerminatePipelineRun(runClient, runID)
+		testutil.ArchivePipelineRun(runClient, runID)
+		testutil.DeletePipelineRun(runClient, runID)
+	}
+}
+
+func cleanupE2EExperiments(testContext *apitests.TestContext) {
+	logger.Log("Deleting %d experiment(s)", len(testContext.Experiment.CreatedExperimentIds))
+	for _, experimentID := range testContext.Experiment.CreatedExperimentIds {
+		testutil.DeleteExperiment(experimentClient, experimentID)
+	}
+}
+
+func cleanupE2EPipelines(testContext *apitests.TestContext) {
+	logger.Log("Deleting %d pipeline(s)", len(testContext.Pipeline.CreatedPipelines))
+	for _, pipeline := range testContext.Pipeline.CreatedPipelines {
+		testutil.DeletePipelineBestEffort(pipelineClient, pipeline.PipelineID, true)
+	}
+}
