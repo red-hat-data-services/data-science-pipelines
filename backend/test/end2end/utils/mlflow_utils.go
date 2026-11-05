@@ -17,6 +17,7 @@ package utils
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -40,6 +41,7 @@ import (
 const (
 	mlflowEndpointEnv    = "MLFLOW_TRACKING_URI"
 	mlflowInsecureTLSEnv = "MLFLOW_TRACKING_INSECURE_TLS"
+	mlflowCABundleEnv    = "MLFLOW_CA_BUNDLE_PATH"
 	mlflowBearerTokenEnv = "MLFLOW_BEARER_TOKEN"
 	mlflowUsernameEnv    = "MLFLOW_TRACKING_USERNAME"
 	mlflowPasswordEnv    = "MLFLOW_TRACKING_PASSWORD"
@@ -53,12 +55,22 @@ func getMLflowClient(endpoint string) (*mlflowclient.Client, error) {
 	bearerToken := os.Getenv(mlflowBearerTokenEnv)
 	username := os.Getenv(mlflowUsernameEnv)
 	password := os.Getenv(mlflowPasswordEnv)
+	tlsConfig := &tls.Config{InsecureSkipVerify: insecure} //nolint:gosec
+	if caBundlePath := os.Getenv(mlflowCABundleEnv); caBundlePath != "" {
+		caBundle, err := os.ReadFile(caBundlePath)
+		if err != nil {
+			return nil, fmt.Errorf("read MLflow CA bundle %q: %w", caBundlePath, err)
+		}
+		roots := x509.NewCertPool()
+		if !roots.AppendCertsFromPEM(caBundle) {
+			return nil, fmt.Errorf("MLflow CA bundle %q contains no certificates", caBundlePath)
+		}
+		tlsConfig.RootCAs = roots
+	}
 	httpClient := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: insecure, //nolint:gosec
-			},
+			TLSClientConfig: tlsConfig,
 		},
 	}
 	client, err := mlflowclient.NewClient(mlflowclient.Config{
