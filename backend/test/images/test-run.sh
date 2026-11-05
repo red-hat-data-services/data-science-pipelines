@@ -1,15 +1,19 @@
 #!/bin/bash
 
+REQUESTED_TEST_DIRECTORY="${TEST_DIRECTORY-}"
+
 set -o allexport
 source .env
 source "./patch-csv.sh"
 set +o allexport
 
+if [ -n "$REQUESTED_TEST_DIRECTORY" ]; then
+  TEST_DIRECTORY="$REQUESTED_TEST_DIRECTORY"
+fi
+
 export DEPLOYMENT_NAME="ds-pipeline-$DSPA_NAME"
 
 SKIP_DEPLOYMENT="${SKIP_DEPLOYMENT:-true}"
-RANDOM_SUFFIX=$(head /dev/urandom | tr -dc a-z0-9 | head -c 8)
-export NAMESPACE="$NAMESPACE-$RANDOM_SUFFIX"
 
 TEST_LABEL="smoke"
 DSPO_OWNER="opendatahub-io"
@@ -18,11 +22,15 @@ DSPO_BRANCH="stable"
 DSP_TAG="stable"
 DEPLOY_DSPO="true"
 NUM_PARALLEL_NODES=10
+CUSTOM_PIP_INDEX_URL="https://pypi.org/simple"
+CUSTOM_PIP_TRUSTED_HOST="pypi.org"
+GPU_VENDOR="nvidia"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --label-filter=*)
       TEST_LABEL="${1#*=}"
+      REQUESTED_TEST_LABEL="$TEST_LABEL"
       shift
       ;;
     --dsp-tag=*)
@@ -49,8 +57,82 @@ while [ "$#" -gt 0 ]; do
       NUM_PARALLEL_NODES="${1#*=}"
       shift
       ;;
+    --gpu-vendor=*)
+      GPU_VENDOR="${1#*=}"
+      shift
+      ;;
   esac
 done
+
+# Only the dedicated upgrade orchestration labels switch suites; do not match
+# substrings such as "!UpgradePreparation" inside compound Tier1 filters.
+upgrade_test_label() {
+  case "$1" in
+    UpgradePreparation|UpgradeVerification) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Tier1 and API compound gates are not the air-gap Smoke lane; do not replace them
+# with --label-filter=disconnected on disconnected clusters.
+disconnected_preserve_requested_label() {
+  local filter="$1"
+  if [[ "$filter" == *Tier1* ]]; then
+    return 0
+  fi
+  if [[ "$filter" == *"!UpgradePreparation"* ]] || [[ "$filter" == *"!UpgradeVerification"* ]]; then
+    return 0
+  fi
+  return 1
+}
+
+source "./check_disconnected_cluster.sh"
+DISCONNECTED_RESULT="$(check_disconnected_cluster)" || {
+  echo "ERROR: check_disconnected_cluster failed (exit $?), aborting"
+  exit 1
+}
+if [[ "$DISCONNECTED_RESULT" == "true" ]]; then
+  echo "Disconnected cluster detected"
+  if ! upgrade_test_label "$TEST_LABEL"; then
+    if [ -z "$REQUESTED_TEST_LABEL" ]; then
+      TEST_LABEL="disconnected"
+    elif [[ "$REQUESTED_TEST_LABEL" == *disconnected* ]]; then
+      :
+    elif disconnected_preserve_requested_label "$REQUESTED_TEST_LABEL"; then
+      echo "Disconnected cluster: preserving explicit label filter (fail-closed via --fail-on-empty if no specs match): $REQUESTED_TEST_LABEL"
+      TEST_LABEL="$REQUESTED_TEST_LABEL"
+    elif [[ "$REQUESTED_TEST_LABEL" == "smoke" ]]; then
+      TEST_LABEL="smoke && disconnected"
+    fi
+  fi
+  CLUSTER_BASE_DOMAIN=""
+  for attempt in 1 2 3; do
+    CLUSTER_BASE_DOMAIN=$(oc get dns cluster -o jsonpath='{.spec.baseDomain}' 2>/dev/null) && break
+    echo "WARNING: oc get dns cluster failed (attempt $attempt/3), retrying in 5s..."
+    sleep 5
+  done
+  if [[ -z "$CLUSTER_BASE_DOMAIN" ]]; then
+    echo "ERROR: Failed to retrieve CLUSTER_BASE_DOMAIN from 'oc get dns cluster' after 3 attempts"
+    exit 1
+  fi
+  BASTION_HOST="bastion.${CLUSTER_BASE_DOMAIN}"
+  AWS_ENDPOINT="${BASTION_HOST}:9000"
+  AWS_SECRET_ACCESS_KEY="minioadmin"
+  AWS_ACCESS_KEY_ID="minioadmin"
+  BUCKET="ods-ci-ds-pipelines"
+  REGION="us-east-1"
+  CUSTOM_PIP_INDEX_URL="https://${BASTION_HOST}:9443/root/pypi/+simple/"
+  CUSTOM_PIP_TRUSTED_HOST="${BASTION_HOST}"
+  DISCONNECTED_CLUSTER="true"
+fi
+
+# Default TEST_DIRECTORY comes from .env (end2end). Upgrade jobs run v2/api only.
+if upgrade_test_label "$TEST_LABEL"; then
+  TEST_DIRECTORY="v2/api"
+else
+  RANDOM_SUFFIX=$(head /dev/urandom | tr -dc a-z0-9 | head -c 8)
+  export NAMESPACE="$NAMESPACE-$RANDOM_SUFFIX"
+fi
 
 # 1. Create a temporary file to store dspa config
 dspa_deployment=$(mktemp)
@@ -115,11 +197,9 @@ EOF
 else
   cat <<EOF >> "$dspa_deployment"
   objectStorage:
-    enableExternalRoute: true
     minio:
       deploy: true
       image: 'quay.io/opendatahub/minio:RELEASE.2019-08-14T20-37-41Z-license-compliance'
-  podToPodTLS: true
 EOF
 fi
 
@@ -146,14 +226,12 @@ fi
 
 #################### DEPLOY DSPA #######################
 
-# Create Namespace
-echo "Creating namespace: $NAMESPACE"
-oc create namespace "$NAMESPACE"
-
 # Define cleanup function
 cleanup() {
   echo "Cleaning up resources..."
-  if [ -n "$NAMESPACE" ] && oc get namespace "$NAMESPACE" &> /dev/null; then
+  if [[ "$TEST_LABEL" == "UpgradePreparation" ]] && oc -n "$NAMESPACE" get deployment "$DEPLOYMENT_NAME" &> /dev/null; then
+    echo "Skipping namespace deletion for UpgradePreparation tests (namespace: $NAMESPACE)"
+  elif [ -n "$NAMESPACE" ] && oc get namespace "$NAMESPACE" &> /dev/null; then
     echo "Deleting namespace: $NAMESPACE"
     oc delete namespace "$NAMESPACE"
   fi
@@ -169,32 +247,40 @@ cleanup() {
 # Set trap to run cleanup on script exit (success or failure)
 trap cleanup EXIT
 
-# Create AWS Secret (only for S3 storage)
-if [ "$STORAGE_TYPE" = "s3" ]; then
-  echo "Creating AWS credentials secret for S3 storage"
-  oc -n "$NAMESPACE" create secret generic "$SECRET_NAME" \
-    --from-literal=AWS_ACCESS_KEY="$AWS_ACCESS_KEY_ID" \
-    --from-literal=AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+if [[ "$TEST_LABEL" == "UpgradeVerification" ]]; then
+  echo "UpgradeVerification: reusing existing namespace $NAMESPACE and DSPA deployment"
 else
-  echo "Skipping AWS secret creation (using Minio storage)"
-fi
+  # Create Namespace
+  echo "Creating namespace: $NAMESPACE"
+  oc create namespace "$NAMESPACE"
 
-# Create DSPA deployment
-echo "Creating DSPA deployment"
-cat "$dspa_deployment"
-oc apply -n "$NAMESPACE" -f "$dspa_deployment"
-timeout 1m bash -c \
-  "until oc -n $NAMESPACE get deployment $DEPLOYMENT_NAME &> /dev/null; do echo 'Waiting for the deployment $DEPLOYMENT_NAME...'; sleep 10; done"
-if oc wait --for=condition=available deployment/ds-pipeline-"$DSPA_NAME" --timeout=10m -n "$NAMESPACE"; then
-  echo "Operator pod is ready"
-else
-  echo "Warning: Operator pod did not become ready within timeout, continuing anyway..."
-  exit 1
-fi
+  # Create AWS Secret (only for S3 storage)
+  if [ "$STORAGE_TYPE" = "s3" ]; then
+    echo "Creating AWS credentials secret for S3 storage"
+    oc -n "$NAMESPACE" create secret generic "$SECRET_NAME" \
+      --from-literal=AWS_ACCESS_KEY="$AWS_ACCESS_KEY_ID" \
+      --from-literal=AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+  else
+    echo "Skipping AWS secret creation (using Minio storage)"
+  fi
 
-# Create Role Binding
-echo "Create role binding to allow service account access to DSPA API"
-oc apply -f "$dspa_role_binding" -n "$NAMESPACE"
+  # Create DSPA deployment
+  echo "Creating DSPA deployment"
+  cat "$dspa_deployment"
+  oc apply -n "$NAMESPACE" -f "$dspa_deployment"
+  timeout 1m bash -c \
+    "until oc -n $NAMESPACE get deployment $DEPLOYMENT_NAME &> /dev/null; do echo 'Waiting for the deployment $DEPLOYMENT_NAME...'; sleep 10; done"
+  if oc wait --for=condition=available deployment/ds-pipeline-"$DSPA_NAME" --timeout=10m -n "$NAMESPACE"; then
+    echo "Operator pod is ready"
+  else
+    echo "Warning: Operator pod did not become ready within timeout, continuing anyway..."
+    exit 1
+  fi
+
+  # Create Role Binding
+  echo "Create role binding to allow service account access to DSPA API"
+  oc apply -f "$dspa_role_binding" -n "$NAMESPACE"
+fi
 
 # Get API URL
 echo "Fetching route to $DEPLOYMENT_NAME"
@@ -208,10 +294,6 @@ export API_TOKEN=$(oc create token "$DEPLOYMENT_NAME" --namespace "$NAMESPACE" -
 
 
 #################### TESTS #######################
-# Run Tests
-if [[ "$TEST_LABEL" == *"Upgrade"* ]]; then
-  TEST_DIRECTORY="v2/api"
-fi
 
 # Traverse up directories until we find a directory containing $TEST_DIRECTORY
 current_dir="$(pwd)"
@@ -224,8 +306,12 @@ while [ "$current_dir" != "/" ]; do
   current_dir="$(dirname "$current_dir")"
 done
 
+# Reports always go to backend/test/end2end/reports regardless of which suite runs
+REPORT_OUTPUT_DIR="${found_test_dir%/$TEST_DIRECTORY}/end2end/reports"
+
 if [ -n "$found_test_dir" ]; then
   echo "Found test directory at: $found_test_dir"
+  echo "Reports directory: $REPORT_OUTPUT_DIR"
   cd "$found_test_dir" || exit
 else
   echo "Error: Could not find $TEST_DIRECTORY in any parent directory"
@@ -235,10 +321,17 @@ echo "Running Tests now..."
 go run github.com/onsi/ginkgo/v2/ginkgo -r -v -p \
   --nodes=$NUM_PARALLEL_NODES \
   --keep-going \
+  --fail-on-empty \
   --label-filter="$TEST_LABEL" \
   -- -namespace="$NAMESPACE" \
   -apiUrl="$API_URL" \
   -authToken="$API_TOKEN" \
   -disableTlsCheck=true \
+  -gpuVendor=$GPU_VENDOR \
+  -customPipIndexURL=$CUSTOM_PIP_INDEX_URL \
+  -customPipTrustedHost=$CUSTOM_PIP_TRUSTED_HOST \
   -serviceAccountName=pipeline-runner-"$DSPA_NAME" \
-  -baseImage="registry.redhat.io/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168"
+  -baseImage="registry.redhat.io/ubi9/python-312@sha256:e80ff3673c95b91f0dafdbe97afb261eab8244d7fd8b47e20ffcbcfee27fb168" \
+  -disconnectedCluster="${DISCONNECTED_CLUSTER:-false}" \
+  -reportOutputDir="$REPORT_OUTPUT_DIR" \
+  ${EXPECTED_PLATFORM_RELEASE_VERSION:+-expectedPlatformReleaseVersion="$EXPECTED_PLATFORM_RELEASE_VERSION"}

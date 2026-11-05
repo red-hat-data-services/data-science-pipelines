@@ -140,14 +140,73 @@ podman run -it \
   --num-parallel-tests=5
 ```
 
+## Upgrade verification (RHOAI / ODH product upgrade)
+
+OpenShift product upgrade jobs run the same Ginkgo suites with `--label-filter=UpgradePreparation` before the
+cluster upgrade and `--label-filter=UpgradeVerification` after upgrade (see `backend/test/v2/api/upgrade_api_test.go`
+and `upgrade_aipipelines_verification_test.go`). Those specs are also tagged **Tier1** for the quality-gate sheet.
+Standard **Tier1** API or E2E jobs on connected clusters should use
+`Tier1 && !UpgradePreparation && !UpgradeVerification` so upgrade orchestration stays on dedicated upgrade lanes only.
+GitHub Actions runs upgrade labels in
+[`.github/workflows/upgrade-test.yml`](../../../.github/workflows/upgrade-test.yml).
+
+`UpgradeVerification` reuses the DSPA namespace and API data created during `UpgradePreparation` (`test-run.sh`).
+
+### `test-run.sh` suite directory (`TEST_DIRECTORY`)
+
+- **Default:** `.env` sets `TEST_DIRECTORY=end2end` (product E2E gates such as `smoke`, `Tier1`, or `E2ECritical`).
+- **Upgrade only:** `--label-filter=UpgradePreparation` or `--label-filter=UpgradeVerification` switches to `v2/api` and skips the random namespace suffix so verification reuses preparation data.
+- **Normal API Tier1:** compound filters such as `Tier1 && !UpgradePreparation && !UpgradeVerification` do **not** change the suite; set `TEST_DIRECTORY=v2/api` in the environment (or `.env`) and run from the test image with that label filter. Substring checks on `Upgrade` inside compound filters are intentionally **not** used.
+- **Disconnected (air-gap) cluster:** runtime setup (bastion MinIO, pip mirror, `-disconnectedCluster=true`) applies to all non-upgrade runs. Label selection: no explicit `--label-filter` → `disconnected`; explicit `disconnected` (or a filter that already includes it) → unchanged; explicit **`smoke`** → `smoke && disconnected` (not bare `smoke`); explicit **Tier1** or **API compound** filters → preserved (not replaced with `disconnected`). There are no Tier1/disconnected specs today, so those preserved filters match zero specs and **`--fail-on-empty`** fails the lane (fail-closed until disconnected Tier1/API IRs exist). Other explicit filters are preserved; empty selection still fails via **`--fail-on-empty`**.
+
+### Modular AIPipelines acceptance criteria (post-upgrade)
+
+After a platform upgrade, `UpgradeVerification` checks the cluster-scoped modular **AIPipelines** operand when
+the CRD `aipipelines.components.platform.opendatahub.io` is present. If the CRD is absent and
+`EXPECTED_PLATFORM_RELEASE_VERSION` is set (required on RHOAI/ODH product upgrade jobs), the test **fails**. If
+both the CRD and that variable are unset, the spec is **skipped** (for example Kind KFP upgrade CI without the
+modular module):
+
+1. CRD exists and is Established
+2. Cluster-scoped `default-aipipelines` exists and is reconciled (`status.observedGeneration == metadata.generation`)
+3. `status.phase == Ready`
+4. Conditions `Ready`, `ProvisioningSucceeded`, `DSPOReady`, and `ArgoWorkflowsControllersReady` are True with
+   matching `observedGeneration`
+5. `status.releases[name=platform].version` matches `EXPECTED_PLATFORM_RELEASE_VERSION`
+
+Full DSPA lifecycle and module deletion scenarios remain in DSPO integration and `aipipelines-e2e-test`.
+
+**Required on Jenkins / `rhoai-test-flow` `UpgradeVerification`:** set the target platform release so missing
+CRD or a stale handshake fails closed:
+
+```bash
+export EXPECTED_PLATFORM_RELEASE_VERSION="<target platform version>"
+```
+
+**GitHub Actions Kind CI:** the target `deploy` action exports the `platformVersion` from DSPO's modular
+AIPipelines fixture, and `UpgradeVerification` receives it through `expected_platform_release_version`.
+
+**Out of scope:** RHOAI downgrade paths are not exercised here; downgrade remains a manual / release-process concern.
+
 ## Test Labels Available
+
+The legacy Ginkgo label **`Sanity`** and **`--label-filter=sanity`** are removed (Phase 2 quality gates). Migrate jobs as follows: **`smoke`** for the Smoke gate; **`Tier1`** with **`./backend/test/end2end`** for product E2E (essential + explicit Tier1 + integration—not a 1:1 Sanity rename); **`Tier1 && !UpgradePreparation && !UpgradeVerification`** with **`./backend/test/v2/api`** for normal API Tier1. Details: [PR 467](https://github.com/opendatahub-io/data-science-pipelines/pull/467) and `AGENTS.md`.
 
 Based on the default configuration:
 
-- `E2ECritical` - Critical end-to-end tests (default)
-- `smoke` - Basic functionality validation
-- `integration` - Integration test scenarios
-- `regression` - Regression test suite
+- `smoke` - Component-level critical tests (default for RHOAI nightly)
+- `disconnected` - Air-gapped E2E lane (subset of Smoke IRs in `e2eDisconnectedPipelinePaths`; also tagged `Smoke`; connected smoke uses `smoke && !disconnected`)
+- `Tier1` - High-priority tests excluding Smoke
+- `Tier2` - Medium- and low-priority positive tests
+- `Tier3` - Negative and destructive tests
+- `E2ECritical` - Multi-user critical lane; gate IRs also carry `smoke` or `Tier1` on the same spec (remaining `valid/critical` sweep stays `E2ECritical` + `Tier2`)
+- `integration` - Cross-component integration (also tagged Tier1; Kind CI runs `Tier1 && !integration`)
+- `gpu` - Accelerator-required E2E (also tagged Tier2; CPU/Kind Tier2 uses `Tier2 && !gpu && !dra-check`)
+- `dra-check` - DRA scheduling checks (also tagged Tier2; excluded from Kind Tier2 via `!dra-check`)
+- `WorkflowCompiler` - Compiler golden tests (also tagged Tier1; GitHub `compiler-tests.yml` keeps this label)
+- `WorkflowCompilerVisits` - Compiler visitor iteration (also tagged Tier2)
+- `UpgradePreparation` - Seed DSPA API data before a product upgrade (also tagged Tier1; standard Tier1 API jobs use `Tier1 && !UpgradePreparation && !UpgradeVerification`)
+- `UpgradeVerification` - Verify DSPA API persistence and modular AIPipelines status after upgrade (also tagged Tier1)
 
 ## Test Execution Flow
 

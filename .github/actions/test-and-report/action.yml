@@ -45,7 +45,7 @@ inputs:
     default: "10"
   test_label:
     required: true
-    description: "Test Label to filter on, for e.g. Regression, Smoke, APIServerTests etc."
+    description: "Test Label to filter on, for e.g. smoke, Tier1, Tier2, Tier3, ApiServerTests"
   upload_pipelines_with_kubernetes_client:
     required: false
     default: 'false'
@@ -68,7 +68,11 @@ inputs:
     required: false
     default: ""
   deployment_service_account_name:
-    description: "Service account name from deployment (from deploy action)"
+    description: "API server service account name for auth token generation (from deploy action)"
+    required: false
+    default: ""
+  pipeline_runner_service_account_name:
+    description: "Pipeline runner service account for workflow execution (from deploy action)"
     required: false
     default: ""
   deployment_mode:
@@ -96,6 +100,14 @@ inputs:
     description: "Skip API access configuration and token generation (for tests that do not need a cluster)"
     required: false
     default: 'false'
+  mlflow_enabled:
+    description: "Whether MLflow is deployed and available for integration tests"
+    required: false
+    default: 'false'
+  expected_platform_release_version:
+    description: "Expected platform release version for modular AIPipelines upgrade verification"
+    required: false
+    default: ""
 
 
 runs:
@@ -112,6 +124,21 @@ runs:
         sleep 5
       continue-on-error: true
 
+    - name: Re-establish MLflow port-forward for tests
+      id: port-forward-mlflow
+      if: (!cancelled())
+      shell: bash
+      run: |
+        if [ -z "${MLFLOW_PORT_FORWARD_NS:-}" ] || [ -z "${MLFLOW_PORT_FORWARD_SVC:-}" ]; then
+          echo "No MLflow port-forward metadata exported for this job"
+          exit 0
+        fi
+        REMOTE_PORT="${MLFLOW_PORT_FORWARD_REMOTE_PORT:-5000}"
+        pkill -f "kubectl port-forward.*${MLFLOW_PORT_FORWARD_SVC}.*8080:${REMOTE_PORT}" || true
+        kubectl port-forward -n "$MLFLOW_PORT_FORWARD_NS" "svc/$MLFLOW_PORT_FORWARD_SVC" "8080:$REMOTE_PORT" > /dev/null 2>&1 &
+        sleep 5
+      continue-on-error: true
+
     - name: Configure API Access
       id: configure-api
       if: ${{ inputs.skip_api_config != 'true' }}
@@ -123,6 +150,7 @@ runs:
         INPUT_MULTI_USER: ${{ inputs.multi_user }}
         INPUT_SERVICE_ACCOUNT_NAME: ${{ inputs.service_account_name }}
         INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME: ${{ inputs.deployment_service_account_name }}
+        INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME: ${{ inputs.pipeline_runner_service_account_name }}
         INPUT_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
         INPUT_DEFAULT_NAMESPACE: ${{ inputs.default_namespace }}
       run: |
@@ -148,23 +176,34 @@ runs:
           echo "🔍 Auto-detected API URL: $API_URL"
         fi
 
-        # Determine service account name (needed regardless of token source)
-        if [ -n "$INPUT_SERVICE_ACCOUNT_NAME" ]; then
-          SERVICE_ACCOUNT_NAME="$INPUT_SERVICE_ACCOUNT_NAME"
-          echo "ℹ️  Using provided service account: $SERVICE_ACCOUNT_NAME"
-        elif [ -n "$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME" ]; then
-          SERVICE_ACCOUNT_NAME="$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME"
-          echo "🔍 Using deployment service account: $SERVICE_ACCOUNT_NAME"
+        # Resolve AUTH_SERVICE_ACCOUNT: used for API token generation.
+        # Priority: deployment SA > deployment name > fallback.
+        if [ -n "$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME" ]; then
+          AUTH_SERVICE_ACCOUNT="$INPUT_DEPLOYMENT_SERVICE_ACCOUNT_NAME"
+          echo "🔍 Auth service account (from deployment): $AUTH_SERVICE_ACCOUNT"
         else
-          # Fallback based on deployment name
           DEPLOYMENT_NAME="${INPUT_DEPLOYMENT_NAME:-}"
           if [ -n "$DEPLOYMENT_NAME" ]; then
-            SERVICE_ACCOUNT_NAME="$DEPLOYMENT_NAME"
-            echo "🔍 Using deployment name as service account: $SERVICE_ACCOUNT_NAME"
+            AUTH_SERVICE_ACCOUNT="$DEPLOYMENT_NAME"
+            echo "🔍 Auth service account (from deployment name): $AUTH_SERVICE_ACCOUNT"
           else
-            SERVICE_ACCOUNT_NAME="ml-pipeline"  # Final fallback
-            echo "⚠️  Using fallback service account: $SERVICE_ACCOUNT_NAME"
+            AUTH_SERVICE_ACCOUNT="ml-pipeline"
+            echo "⚠️  Auth service account (fallback): $AUTH_SERVICE_ACCOUNT"
           fi
+        fi
+
+        # Resolve EXECUTION_SERVICE_ACCOUNT: used for ginkgo -serviceAccountName
+        # (the SA that pipeline runs execute under).
+        # Priority: explicit override > pipeline runner SA > default.
+        if [ -n "$INPUT_SERVICE_ACCOUNT_NAME" ]; then
+          EXECUTION_SERVICE_ACCOUNT="$INPUT_SERVICE_ACCOUNT_NAME"
+          echo "ℹ️  Execution service account (override): $EXECUTION_SERVICE_ACCOUNT"
+        elif [ -n "$INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME" ]; then
+          EXECUTION_SERVICE_ACCOUNT="$INPUT_PIPELINE_RUNNER_SERVICE_ACCOUNT_NAME"
+          echo "🔍 Execution service account (pipeline runner): $EXECUTION_SERVICE_ACCOUNT"
+        else
+          EXECUTION_SERVICE_ACCOUNT="pipeline-runner"
+          echo "⚠️  Execution service account (fallback): $EXECUTION_SERVICE_ACCOUNT"
         fi
 
         # Use provided token if available, otherwise generate from service account
@@ -193,9 +232,9 @@ runs:
             done
           fi
 
-          # Generate API token
-          echo "🔑 Generating token for $SERVICE_ACCOUNT_NAME..."
-          API_TOKEN=$(kubectl create token "$SERVICE_ACCOUNT_NAME" --namespace "$DEFAULT_NAMESPACE" --duration=60m)
+          # Generate API token from the auth SA (not the pipeline runner SA)
+          echo "🔑 Generating token for $AUTH_SERVICE_ACCOUNT..."
+          API_TOKEN=$(kubectl create token "$AUTH_SERVICE_ACCOUNT" --namespace "$DEFAULT_NAMESPACE" --duration=60m)
           if [ $? -eq 0 ]; then
             echo "✅ Token generated successfully"
           else
@@ -210,7 +249,7 @@ runs:
         fi
         echo "API_URL=$API_URL" >> "$GITHUB_OUTPUT"
         echo "API_TOKEN=$API_TOKEN" >> "$GITHUB_OUTPUT"
-        echo "SERVICE_ACCOUNT_NAME=${SERVICE_ACCOUNT_NAME:-${INPUT_SERVICE_ACCOUNT_NAME:-}}" >> "$GITHUB_OUTPUT"
+        echo "SERVICE_ACCOUNT_NAME=${EXECUTION_SERVICE_ACCOUNT}" >> "$GITHUB_OUTPUT"
 
     - name: Run Tests
       id: run-tests
@@ -218,6 +257,11 @@ runs:
       working-directory: ${{ inputs.test_directory }}
       env:
         PIPELINE_STORE: ${{ inputs.pipeline_store }}
+        INPUT_API_URL: ${{ inputs.api_url }}
+        INPUT_DEPLOYMENT_NAME: ${{ inputs.deployment_name }}
+        INPUT_DEFAULT_NAMESPACE: ${{ inputs.default_namespace }}
+        INPUT_TEST_LABEL: ${{ inputs.test_label }}
+        EXPECTED_PLATFORM_RELEASE_VERSION: ${{ inputs.expected_platform_release_version }}
       run: |
         USE_PROXY=${{ inputs.proxy }}
         if [ -z "$USE_PROXY" ]; then
@@ -252,6 +296,9 @@ runs:
         API_URL="${{ steps.configure-api.outputs.API_URL }}"
         AUTH_TOKEN="${{ steps.configure-api.outputs.API_TOKEN }}"
         SERVICE_ACCOUNT_NAME="${{ steps.configure-api.outputs.SERVICE_ACCOUNT_NAME }}"
+        WORKSPACE_ROOT="${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}"
+        export GOPROXY="${GOPROXY:-https://proxy.golang.org|direct}"
+        PORT_FORWARD_PIDS=()
         BASE_IMAGE_FLAG=""
         if [ -n "${{ inputs.base_image }}" ]; then
           BASE_IMAGE_FLAG="-baseImage=${{ inputs.base_image }}"
@@ -264,7 +311,92 @@ runs:
           DISABLE_TLS_CHECK='false'
         fi
 
-        go run github.com/onsi/ginkgo/v2/ginkgo -r -v --cover -p --keep-going --github-output=true --nodes=${{ inputs.num_parallel_nodes }} --label-filter=${{ inputs.test_label }} --silence-skips=true -- -namespace=${{ inputs.default_namespace }} -multiUserMode=$MULTI_USER -useProxy=$USE_PROXY -userNamespace=${{ inputs.user_namespace }} -uploadPipelinesWithKubernetes=${{ inputs.upload_pipelines_with_kubernetes_client}} -pipelineStoreKubernetes=$pipelineStoreKubernetes -disableTlsCheck=$DISABLE_TLS_CHECK -apiScheme=$API_SCHEME -tlsEnabled=$TLS_ENABLED -caCertPath=$CA_CERT_PATH -pullNumber=$PULL_NUMBER -repoName=$REPO_NAME -apiUrl="$API_URL" -authToken="$AUTH_TOKEN" -serviceAccountName="$SERVICE_ACCOUNT_NAME" $BASE_IMAGE_FLAG
+        (
+          cd "$WORKSPACE_ROOT"
+          go mod download
+        )
+
+        cleanup_port_forwards() {
+          for pid in "${PORT_FORWARD_PIDS[@]}"; do
+            kill "$pid" 2>/dev/null || true
+          done
+        }
+
+        start_port_forward_supervisor() {
+          local name="$1"
+          local namespace="$2"
+          local resource="$3"
+          local local_port="$4"
+          local remote_port="$5"
+          local log_file="/tmp/${name}-port-forward.log"
+
+          (
+            while true; do
+              kubectl port-forward -n "$namespace" "$resource" "${local_port}:${remote_port}" >>"$log_file" 2>&1 || true
+              echo "Port-forward for ${resource} on ${local_port}:${remote_port} exited; restarting in 2s" >>"$log_file"
+              sleep 2
+            done
+          ) &
+          PORT_FORWARD_PIDS+=("$!")
+        }
+
+        wait_for_local_port() {
+          local port="$1"
+
+          for i in $(seq 1 12); do
+            if python3 -c 'import socket, sys; sock = socket.socket(); sock.settimeout(1); result = sock.connect_ex(("127.0.0.1", int(sys.argv[1]))); sock.close(); sys.exit(0 if result == 0 else 1)' "$port"
+            then
+              return 0
+            fi
+            echo "Waiting for localhost:${port} to accept connections... ($i/12)"
+            sleep 5
+          done
+
+          return 1
+        }
+
+        if [ "${{ inputs.skip_api_config }}" != "true" ]; then
+          trap cleanup_port_forwards EXIT
+
+          start_port_forward_supervisor "seaweedfs" "${INPUT_DEFAULT_NAMESPACE}" "service/seaweedfs" "9000" "9000"
+          wait_for_local_port 9000
+
+          if [ -n "${MLFLOW_PORT_FORWARD_NS:-}" ] && [ -n "${MLFLOW_PORT_FORWARD_SVC:-}" ]; then
+            if [ "${ARGO_COMPATIBILITY_TESTS:-}" = "true" ]; then
+              echo "ERROR: MLflow and MLMD both require localhost:8080 in this action"
+              exit 1
+            fi
+            REMOTE_PORT="${MLFLOW_PORT_FORWARD_REMOTE_PORT:-5000}"
+            start_port_forward_supervisor "mlflow" "${MLFLOW_PORT_FORWARD_NS}" "svc/${MLFLOW_PORT_FORWARD_SVC}" "8080" "${REMOTE_PORT}"
+            wait_for_local_port 8080
+          fi
+
+          if [ -z "${INPUT_API_URL}" ]; then
+            API_SERVICE="${INPUT_DEPLOYMENT_NAME:-ml-pipeline}"
+            start_port_forward_supervisor "api-server" "${INPUT_DEFAULT_NAMESPACE}" "service/${API_SERVICE}" "8888" "8888"
+
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:8888/apis/v1beta1/healthz > /dev/null 2>&1 || \
+                 curl -skf https://localhost:8888/apis/v1beta1/healthz > /dev/null 2>&1; then
+                echo "API server is reachable on localhost:8888"
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "ERROR: API server not reachable at localhost:8888"
+                exit 1
+              fi
+              echo "Waiting for API server on localhost:8888... ($i/12)"
+              sleep 5
+            done
+          fi
+
+          if [ "${ARGO_COMPATIBILITY_TESTS:-}" = "true" ]; then
+            start_port_forward_supervisor "mlmd" "${INPUT_DEFAULT_NAMESPACE}" "service/metadata-grpc-service" "8080" "8080"
+            wait_for_local_port 8080
+          fi
+        fi
+
+        go run github.com/onsi/ginkgo/v2/ginkgo -r -v --cover -p --keep-going --github-output=true --nodes=${{ inputs.num_parallel_nodes }} --label-filter="$INPUT_TEST_LABEL" --silence-skips=true -- -namespace="$INPUT_DEFAULT_NAMESPACE" -multiUserMode=$MULTI_USER -useProxy=$USE_PROXY -userNamespace=${{ inputs.user_namespace }} -uploadPipelinesWithKubernetes=${{ inputs.upload_pipelines_with_kubernetes_client}} -pipelineStoreKubernetes=$pipelineStoreKubernetes -disableTlsCheck=$DISABLE_TLS_CHECK -apiScheme=$API_SCHEME -tlsEnabled=$TLS_ENABLED -caCertPath=$CA_CERT_PATH -pullNumber=$PULL_NUMBER -repoName=$REPO_NAME -apiUrl="$API_URL" -authToken="$AUTH_TOKEN" -serviceAccountName="$SERVICE_ACCOUNT_NAME" -mlflowEnabled=${{ inputs.mlflow_enabled }} $BASE_IMAGE_FLAG
       continue-on-error: true
 
     - name: Collect Pod logs in case of Test Failures
@@ -276,6 +408,10 @@ runs:
         df -h
         NAMESPACE="${{ inputs.default_namespace }}"
         ./.github/resources/scripts/collect-logs.sh --ns $NAMESPACE --output /tmp/tmp_pod_log.txt
+        ./.github/resources/scripts/collect-logs.sh --ns kube-system --output /tmp/tmp_kube_system_pod_log.txt
+        if [[ "${{ inputs.proxy }}" == "true" ]]; then
+          ./.github/resources/scripts/collect-logs.sh --ns squid --output /tmp/tmp_squid_pod_log.txt
+        fi
       continue-on-error: true
 
     - name: Set up Python for reporting
