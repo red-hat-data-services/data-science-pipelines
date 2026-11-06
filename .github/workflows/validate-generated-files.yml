@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   validate-generated-files:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
 
@@ -92,7 +92,7 @@ jobs:
         run: make check-diff
 
   validate-backwards-compabitiblity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 

@@ -17,7 +17,7 @@ concurrency:
 jobs:
   ok-to-test:
     if: contains(github.event.pull_request.labels.*.name, 'ok-to-test') || github.event_name == 'pull_request_target'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
 
     steps:
@@ -33,7 +33,7 @@ jobs:
           echo "PR Author: $PR_AUTHOR"
           echo "Author Association: $AUTHOR_ASSOCIATION"
           echo "::endgroup::"
-          
+
           # MEMBER = org member, OWNER = org owner, COLLABORATOR = invited collaborator
           if [[ "$AUTHOR_ASSOCIATION" == "MEMBER" || "$AUTHOR_ASSOCIATION" == "OWNER" || "$AUTHOR_ASSOCIATION" == "COLLABORATOR" ]]; then
             echo "::notice::Author '$PR_AUTHOR' is a trusted contributor (association: $AUTHOR_ASSOCIATION). Auto-approving workflow runs."
