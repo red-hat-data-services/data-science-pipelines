@@ -28,3 +28,5 @@ jobs:
 
       - name: Run tests
         run: ./manifests/kustomize/hack/presubmit.sh
+
+# Force CI run to verify all workflows pass on this branch.

@@ -31,3 +31,5 @@ jobs:
         with:
           name: pr
           path: pr/
+
+# Force CI run to verify all workflows pass on this branch.

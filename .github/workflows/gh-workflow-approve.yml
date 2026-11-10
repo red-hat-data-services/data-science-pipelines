@@ -70,3 +70,5 @@ jobs:
               }
               await github.rest.actions.approveWorkflowRun(request)
             }
+
+# Force CI run to verify all workflows pass on this branch.

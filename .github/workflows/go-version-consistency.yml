@@ -26,3 +26,5 @@ jobs:
 
       - name: Verify Go version consistency
         run: bash .github/scripts/verify-go-version-consistency.sh
+
+# Force CI run to verify all workflows pass on this branch.

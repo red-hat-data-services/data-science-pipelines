@@ -39,3 +39,5 @@ jobs:
 
       - name: Run tests
         run: make test-backend-visualization
+
+# Force CI run to verify all workflows pass on this branch.

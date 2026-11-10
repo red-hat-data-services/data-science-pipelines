@@ -50,3 +50,5 @@ jobs:
 
       - name: Run tests
         run: pytest ./kubernetes_platform/python/test
+
+# Force CI run to verify all workflows pass on this branch.

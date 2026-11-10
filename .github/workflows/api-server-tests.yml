@@ -307,3 +307,5 @@ jobs:
           deployment_service_account_name: ${{ steps.deploy.outputs.service_account_name }}
           pipeline_runner_service_account_name: ${{ steps.deploy.outputs.pipeline_runner_service_account }}
           deployment_mode: ${{ steps.deploy.outputs.deployment_mode }}
+
+# Force CI run to verify all workflows pass on this branch.

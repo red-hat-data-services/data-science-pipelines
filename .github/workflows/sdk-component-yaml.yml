@@ -50,3 +50,5 @@ jobs:
           # We setup the env in the CI
           SETUP_ENV: false
         run: make test-component-yaml-run
+
+# Force CI run to verify all workflows pass on this branch.

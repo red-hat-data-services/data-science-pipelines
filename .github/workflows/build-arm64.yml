@@ -59,3 +59,5 @@ jobs:
           arch=$(docker inspect localhost/${{ matrix.image.name }}:${{ matrix.target_arch }} --format '{{.Architecture}}')
           echo "Image architecture: $arch"
           [ "$arch" = "${{ matrix.target_arch }}" ] || { echo "Expected ${{ matrix.target_arch }}, got $arch"; exit 1; }
+
+# Force CI run to verify all workflows pass on this branch.

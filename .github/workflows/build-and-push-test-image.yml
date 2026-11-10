@@ -76,3 +76,5 @@ jobs:
           echo "**Full Image:** \`${{ steps.determine_tag.outputs.full_image }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ✅ Built and pushed successfully" >> $GITHUB_STEP_SUMMARY
+
+# Force CI run to verify all workflows pass on this branch.
