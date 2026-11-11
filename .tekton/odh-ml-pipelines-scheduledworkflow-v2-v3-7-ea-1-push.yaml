@@ -3,9 +3,9 @@ kind: PipelineRun
 # konflux build manual retrigger - 2026-08-12 17:56:09
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/red-hat-data-services/data-science-pipelines?rev={revision}
-    build.appstudio.redhat.com/commit_sha: '{revision}'
-    build.appstudio.redhat.com/target_branch: '{target_branch}'
+    build.appstudio.openshift.io/repo: https://github.com/red-hat-data-services/data-science-pipelines?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     build.appstudio.openshift.io/build-nudge-files: "build/operator-nudging.yaml"
