@@ -120,6 +120,21 @@ class InfraDeployer:
             raise ValueError(
                 f'Argo Lite resources directory not found: {argo_lite_path}')
 
+        if not self.operator_namespace:
+            raise ValueError(
+                'Operator namespace is required for Argo Lite deployment')
+
+        kustomization_path = os.path.join(argo_lite_path, 'kustomization.yaml')
+        with open(kustomization_path, encoding='utf-8') as kustomization_file:
+            kustomization = yaml.safe_load(kustomization_file)
+        if not isinstance(kustomization, dict):
+            raise ValueError('Argo Lite Kustomization must be a mapping')
+        kustomization['namespace'] = self.operator_namespace
+        with open(
+                kustomization_path, 'w',
+                encoding='utf-8') as kustomization_file:
+            yaml.safe_dump(kustomization, kustomization_file, sort_keys=False)
+
         self.deployment_manager.apply_resource(
             manifest_path=argo_lite_path,
             namespace=self.operator_namespace,
