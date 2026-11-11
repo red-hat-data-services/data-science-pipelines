@@ -104,5 +104,3 @@ jobs:
         env:
           UPDATE_EXPORTED: false
         run: go test .
-
-# Force CI run to verify all workflows pass on this branch.

@@ -37,5 +37,3 @@ jobs:
 
       - name: Run isort tests
         run: ./test/presubmit-isort-sdk.sh
-
-# Force CI run to verify all workflows pass on this branch.

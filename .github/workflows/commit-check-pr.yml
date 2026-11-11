@@ -94,5 +94,3 @@ jobs:
           echo "\`\`\`" >> /tmp/body-file.txt
 
           gh pr comment ${{ env.PR_NUMBER }} --body-file /tmp/body-file.txt
-
-# Force CI run to verify all workflows pass on this branch.

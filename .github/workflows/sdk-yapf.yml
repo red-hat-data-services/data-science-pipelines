@@ -49,5 +49,3 @@ jobs:
 
     - name: Run YAPF SDK Tests
       run: ./test/presubmit-yapf-sdk.sh
-
-# Force CI run to verify all workflows pass on this branch.

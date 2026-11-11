@@ -36,5 +36,3 @@ jobs:
 
       - name: Run docformatter tests
         run: ./test/presubmit-docformatter-sdk.sh
-
-# Force CI run to verify all workflows pass on this branch.

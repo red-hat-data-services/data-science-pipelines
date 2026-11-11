@@ -499,5 +499,3 @@ jobs:
           tls_enabled: ${{ matrix.pod_to_pod_tls_enabled }}
           ca_cert_path: ${{ env.CA_CERT_PATH }}
           mlflow_enabled: 'true'
-
-# Force CI run to verify all workflows pass on this branch.

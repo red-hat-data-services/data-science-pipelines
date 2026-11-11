@@ -111,5 +111,3 @@ jobs:
           name: ci-check-result
           path: ci-check-result/result.json
           if-no-files-found: error
-
-# Force CI run to verify all workflows pass on this branch.

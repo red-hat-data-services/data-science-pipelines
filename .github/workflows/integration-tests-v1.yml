@@ -107,5 +107,3 @@ jobs:
         with:
           name: kfp-initialization-tests-v1-artifacts-k8s-${{ matrix.k8s_version }}
           path: /tmp/tmp*/*
-
-# Force CI run to verify all workflows pass on this branch.

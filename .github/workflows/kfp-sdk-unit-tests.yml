@@ -69,5 +69,3 @@ jobs:
       with:
         xml_files: ${{ steps.run-tests.outputs.JUNIT_XML }}
       continue-on-error: true
-
-# Force CI run to verify all workflows pass on this branch.

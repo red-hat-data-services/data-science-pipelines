@@ -25,5 +25,3 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.RESOURCES_DIR }}/unittests/application_default_credentials.json
         run: go test ./...
-
-# Force CI run to verify all workflows pass on this branch.

@@ -66,5 +66,3 @@ jobs:
           podman push ${IMG}:latest
           podman tag ${IMG}:${NEWEST_TAG} ${IMG}:${SOURCE_BRANCH}
           podman push ${IMG}:${SOURCE_BRANCH}
-
-# Force CI run to verify all workflows pass on this branch.

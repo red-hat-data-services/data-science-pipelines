@@ -11,5 +11,3 @@ jobs:
     if: github.event.action != 'labeled' || github.event.label.name == 'run-gatekeeper'
     uses: red-hat-data-services/devops-shared-resources/.github/workflows/post-codefreeze-gate-logic.yml@main
     secrets: inherit
-
-# Force CI run to verify all workflows pass on this branch.
