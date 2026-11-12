@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/client-go/kubernetes"
@@ -53,6 +54,27 @@ func NewFakeKuberneteCoresClient() *FakeKuberneteCoreClient {
 		&FakePodClient{},
 		&FakeSecretClient{},
 	}
+}
+
+type FakeKubernetesCoreClientWithPod struct {
+	podClientFake *FakePodClientWithPod
+}
+
+func NewFakeKubernetesCoreClientWithPod(pod *corev1.Pod) *FakeKubernetesCoreClientWithPod {
+	return &FakeKubernetesCoreClientWithPod{&FakePodClientWithPod{Pod: pod}}
+}
+
+func (c *FakeKubernetesCoreClientWithPod) PodClient(namespace string) v1.PodInterface {
+	return c.podClientFake
+}
+
+func (c *FakeKubernetesCoreClientWithPod) SecretClient(namespace string) v1.SecretInterface {
+	return &FakeSecretClient{}
+}
+
+func (c *FakeKubernetesCoreClientWithPod) GetClientSet() kubernetes.Interface {
+	// Return nil for fake implementation
+	return nil
 }
 
 type FakeKubernetesCoreClientWithBadPodClient struct {
