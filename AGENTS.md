@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-10-29
+- Last updated: 2026-11-05
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
@@ -535,7 +535,7 @@ When changing an effect-heavy frontend component, add or run the smallest releva
 - Argo Workflows version matrix for compatibility (where relevant): `e2e-test.yml` exercises `v3.5.14`, `v3.7.3`, and `v4.0.4` across the standard cache/test-label matrix, while `api-server-tests.yml` covers standalone and Kubernetes-native Argo compatibility across the standard matrices (with standalone low-Kubernetes spot lanes per supported Argo version).
 - Proxy / cache toggles: dedicated jobs run with HTTP proxy enabled and with execution cache disabled to validate those modes.
 - Dynamic Resource Allocation (DRA): `e2e-test.yml` has a `dra-check` Kind lane on Kubernetes `v1.34.3`. It installs the DRA example driver and validates static, JSON, and passthrough pod resource claims.
-- The MLflow E2E job and the Kubernetes 1.31 MinIO `E2EEssential` matrix lane are temporarily disabled while their CI setup is repaired.
+- MLflow E2E lanes use HTTPS and `MLFLOW_CA_BUNDLE_PATH` for Kubernetes auth; basic-auth and none use HTTP. The MinIO `E2EEssential` lane passes `storage_backend: minio` to `test-and-report` so its port-forward targets the deployed service.
 - Artifacts: failing logs and test outputs are uploaded as workflow artifacts for debugging.
 
 ### CI cluster setup and helpers

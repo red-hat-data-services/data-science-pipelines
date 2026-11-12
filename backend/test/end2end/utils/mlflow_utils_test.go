@@ -15,9 +15,56 @@
 package utils
 
 import (
+	"context"
+	"encoding/pem"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestGetMLflowClientUsesCABundle(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"experiment":{"experiment_id":"42","name":"test"}}`))
+	}))
+	defer server.Close()
+
+	caBundlePath := filepath.Join(t.TempDir(), "mlflow-ca.crt")
+	certificate := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	if err := os.WriteFile(caBundlePath, certificate, 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(mlflowCABundleEnv, caBundlePath)
+	t.Setenv(mlflowInsecureTLSEnv, "false")
+
+	client, err := getMLflowClient(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	experiment, err := client.GetExperimentByName(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if experiment.ID != "42" {
+		t.Fatalf("experiment ID = %q, want 42", experiment.ID)
+	}
+}
+
+func TestGetMLflowClientRejectsInvalidCABundle(t *testing.T) {
+	caBundlePath := filepath.Join(t.TempDir(), "mlflow-ca.crt")
+	if err := os.WriteFile(caBundlePath, []byte("invalid"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(mlflowCABundleEnv, caBundlePath)
+
+	_, err := getMLflowClient("https://localhost:8080/mlflow")
+	if err == nil || !strings.Contains(err.Error(), "contains no certificates") {
+		t.Fatalf("getMLflowClient() error = %v, want invalid CA bundle error", err)
+	}
+}
 
 func TestIsRetriableRetryRunError(t *testing.T) {
 	testCases := []struct {
