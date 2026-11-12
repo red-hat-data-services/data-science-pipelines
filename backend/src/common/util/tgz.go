@@ -19,10 +19,31 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"math"
 	"strings"
 )
 
 // Utils to archive and extract tgz (tar.gz) file.
+
+// SaturatingAdd adds two int64s and returns math.MaxInt64 on overflow.
+func SaturatingAdd(a, b int64) int64 {
+	if b > 0 && a > math.MaxInt64-b {
+		return math.MaxInt64
+	}
+	return a + b
+}
+
+// ArchiveTraversalBudget returns an overflow-safe decompressed-byte budget for
+// scanning archive headers and metadata (e.g. PAX/GNU) surrounding an entry.
+// The budget is maxFileSize plus a 1 MiB overhead for framing, saturating
+// at math.MaxInt64 - 1 to avoid wrapping negative when callers add a sentinel byte.
+func ArchiveTraversalBudget(maxFileSize int64) int64 {
+	const overhead = 1 << 20 // 1 MiB for archive headers and metadata
+	if maxFileSize > math.MaxInt64-overhead-1 {
+		return math.MaxInt64 - 1
+	}
+	return maxFileSize + overhead
+}
 
 // ArchiveTgz takes a map of files with name as key and content as value and
 // tar and gzip it to a tgz content string. Nested files and directories are
