@@ -37,7 +37,7 @@ type FakeClientManager struct {
 	objectStore                   storage.ObjectStoreInterface
 	ExecClientFake                *client.FakeExecClient
 	swfClientFake                 *client.FakeSwfClient
-	k8sCoreClientFake             *client.FakeKuberneteCoreClient
+	KubernetesCoreClientFake      client.KubernetesCoreInterface
 	SubjectAccessReviewClientFake client.SubjectAccessReviewInterface
 	tokenReviewClientFake         client.TokenReviewInterface
 	metadataClient                metadata.ClientInterface
@@ -78,7 +78,7 @@ func NewFakeClientManager(time util.TimeInterface, uuid util.UUIDGeneratorInterf
 		defaultExperimentStore:        storage.NewDefaultExperimentStore(db),
 		objectStore:                   storage.NewFakeObjectStore(),
 		swfClientFake:                 client.NewFakeSwfClient(),
-		k8sCoreClientFake:             client.NewFakeKuberneteCoresClient(),
+		KubernetesCoreClientFake:      client.NewFakeKuberneteCoresClient(),
 		SubjectAccessReviewClientFake: client.NewFakeSubjectAccessReviewClient(),
 		tokenReviewClientFake:         client.NewFakeTokenReviewClient(),
 		logArchive:                    archive.NewLogArchive("/logs", "main.log"),
@@ -173,7 +173,7 @@ func (f *FakeClientManager) SwfClient() client.SwfClientInterface {
 }
 
 func (f *FakeClientManager) KubernetesCoreClient() client.KubernetesCoreInterface {
-	return f.k8sCoreClientFake
+	return f.KubernetesCoreClientFake
 }
 
 func (f *FakeClientManager) SubjectAccessReviewClient() client.SubjectAccessReviewInterface {
