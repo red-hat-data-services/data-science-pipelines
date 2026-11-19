@@ -1,0 +1,17 @@
+boto3
+image
+matplotlib
+pyarrow
+sklearn
+transformers
+torchdata
+webdataset
+pandas
+s3fs
+wget
+torch-model-archiver
+minio
+kfp
+tensorboard
+torchmetrics
+pytorch-lightning

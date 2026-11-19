@@ -1,0 +1,14 @@
+approvers:
+  - accorvin
+  - dsp-developers
+  - gmfrasca
+  - HumairAK
+  - mprahl
+reviewers:
+  - gmfrasca
+  - hbelmiro
+  - HumairAK
+  - VaniHaripriya
+  - mprahl
+emeritus_approvers:
+  - harshad16

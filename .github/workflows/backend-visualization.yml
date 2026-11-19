@@ -1,0 +1,32 @@
+name: KFP backend visualization tests
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - stable
+      - 'rhoai-*'
+
+  pull_request:
+    paths:
+      - '.github/workflows/backend-visualization.yml'
+      - 'backend/src/apiserver/visualization/**'
+      - 'test/presubmit-backend-visualization.sh'
+      - '!**/*.md'
+      - '!**/OWNERS'
+
+jobs:
+  backend-visualization-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Run tests
+        run: ./test/presubmit-backend-visualization.sh
