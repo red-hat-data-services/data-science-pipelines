@@ -73,7 +73,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --label-filter="smoke" \
   --num-parallel-tests=5
 ```
@@ -97,7 +96,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --label-filter="smoke" \
   --num-parallel-tests=3
 ```
@@ -117,7 +115,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --label-filter="E2ECritical" \
   --num-parallel-tests=8
 ```
@@ -132,7 +129,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --label-filter="integration" \
   --dspo-owner="my-org" \
   --dspo-branch="feature-branch" \
@@ -140,14 +136,108 @@ podman run -it \
   --num-parallel-tests=5
 ```
 
+## Disconnected cluster detection
+
+`check_disconnected_cluster.sh` reads
+`OperatorHub/cluster.spec.disableAllDefaultSources`:
+
+- `true`: use disconnected-cluster settings.
+- `false` or an absent field: use connected-cluster settings.
+- A missing OperatorHub resource, failed query, or unexpected value: stop setup
+  without selecting storage settings. The API request has a 15-second timeout.
+
+This follows the OperatorHub configuration convention used by the disconnected
+provisioning workflow. Detection does not create a pod, pull an image, or test
+outbound network access. Environment flags and mirror-policy presence do not
+override the OperatorHub result.
+
+On disconnected clusters, the runner configures bastion MinIO and the pip mirror.
+Detection messages and query errors are saved as `<phase>-detection.log` directly
+in the mounted reports directory. CLI warnings stay in this log and do not change
+the Boolean result of a successful query.
+
+## DSPA readiness and setup failures
+
+The runner waits for DSPA `Ready=True` before fetching the route and generating an
+API token. Set `DSPA_READY_TIMEOUT` to a positive integer followed by `s`, `m`, or
+`h` to change the default `10m` readiness budget, for example:
+
+```bash
+export DSPA_READY_TIMEOUT=15m
+```
+
+Resource creation, readiness, role binding, route lookup, and token generation
+must succeed before Ginkgo starts. On failure, the runner saves diagnostics under
+`backend/test/end2end/reports/` and deletes its owned
+test namespace. Diagnostic collection is bounded and does not replace the
+original failure. Cleanup failures are reported and fail an otherwise successful
+run.
+
+The runner reuses `.github/resources/scripts/collect-logs.sh`, the collector used
+by CI, to capture namespace events, service endpoints, and pod logs. These are
+saved with DSPA status as `<phase>-pod-logs.txt` directly in the reports directory.
+The exit-status summary is saved as `<phase>-result.txt`. Phase-specific filenames
+keep preparation and verification diagnostics separate.
+Every run also writes `<phase>-harness-junit.xml` with a harness test case so setup,
+compilation, and cleanup failures appear in Jenkins test results even when Ginkgo
+cannot produce a report. This supplements Ginkgo's reports. A successful retry
+writes a passing case with the same filename and test identity, replacing the
+previous failure when Jenkins merges stashed results.
+Reporting is initialized before sourcing `.env` or `patch-csv.sh` and validating
+arguments. Failures in these steps also generate a harness report for the
+requested upgrade phase, regardless of argument order.
+Failure text is XML-escaped and stripped of XML-invalid ASCII control characters.
+Known object-storage credentials and the API token are redacted before writing.
+Successful verification and normal runs intentionally collect diagnostics before
+deleting their namespace, preserving final status and logs for investigation.
+Pod log collection has a two-minute timeout so cleanup can still proceed if a
+diagnostic command stalls.
+
+The suite runs in a separate process group using `setsid` from `util-linux`.
+TERM or INT sent only to the runner interrupts its wait and immediately writes
+the harness failure report (exit status 143 or 130). The runner sends TERM to the
+suite group, waits up to five seconds, then sends KILL to remaining workers and
+reaps its child before requesting namespace deletion. Interruption skips pod-log
+collection and submits deletion with `--wait=false`, a two-second API request
+timeout, and an outer three-second timeout with a one-second kill allowance.
+Allow at least 15 seconds of container termination grace for this shutdown path;
+the runner does not wait for namespace finalizers. Normal diagnostic collection
+and namespace deletion also run as tracked background process groups. TERM or
+INT during either step publishes the interruption report, stops that group, and
+switches to the same bounded deletion path. Ordinary completion retains the
+diagnostics and cleanup behavior described above. Foreground setup commands can
+still defer signal handling until they return.
+The entire diagnostic process group has a 135-second deadline (15 seconds for
+DSPA status plus two minutes for pod logs), which also stops descendants left
+behind by a diagnostic command. Repeat signals during interrupted shutdown do
+not change the first signal's exit status or restart its grace period.
+
 ## Upgrade verification (RHOAI / ODH product upgrade)
 
 OpenShift product upgrade jobs run the same Ginkgo suites with `--label-filter=UpgradePreparation` before the
 cluster upgrade and `--label-filter=UpgradeVerification` after upgrade (see `backend/test/v2/api/upgrade_api_test.go`
-and `upgrade_aipipelines_verification_test.go`). GitHub Actions runs the same labels in
+and `upgrade_aipipelines_verification_test.go`). Those specs are also tagged **Tier1** for the quality-gate sheet.
+Standard **Tier1** API or E2E jobs on connected clusters should use
+`Tier1 && !UpgradePreparation && !UpgradeVerification` so upgrade orchestration stays on dedicated upgrade lanes only.
+**Kind CI E2E Tier1** uses `Tier1 && !integration` (Ray integration specs need a cluster with that CRD; see `.github/workflows/e2e-test.yml` and `AGENTS.md`)—distinct from the API compound filter above.
+GitHub Actions runs upgrade labels in
 [`.github/workflows/upgrade-test.yml`](../../../.github/workflows/upgrade-test.yml).
 
 `UpgradeVerification` reuses the DSPA namespace and API data created during `UpgradePreparation` (`test-run.sh`).
+Successful preparation marks the namespace with the ownership label
+`pipelines.kubeflow.org/test-runner=true` and completion annotation
+`pipelines.kubeflow.org/upgrade-preparation=complete`, then retains it. Failed
+preparation collects diagnostics and cleans up. Verification requires these
+markers and the preparation DSPA; it never recreates missing upgrade state.
+Use the updated harness for both phases. After verification succeeds or fails,
+the runner saves diagnostics and cleans up the owned namespace.
+
+### `test-run.sh` suite directory (`TEST_DIRECTORY`)
+
+- **Default:** `.env` sets `TEST_DIRECTORY=end2end` (product E2E gates such as `smoke`, `Tier1`, or `E2ECritical`).
+- **Upgrade only:** `--label-filter=UpgradePreparation` or `--label-filter=UpgradeVerification` switches to `v2/api` and skips the random namespace suffix so verification reuses preparation data.
+- **Normal API Tier1:** compound filters such as `Tier1 && !UpgradePreparation && !UpgradeVerification` do **not** change the suite; set `TEST_DIRECTORY=v2/api` in the environment (or `.env`) and run from the test image with that label filter. Substring checks on `Upgrade` inside compound filters are intentionally **not** used.
+- **Disconnected (air-gap) cluster:** runtime setup (bastion MinIO, pip mirror, `-disconnectedCluster=true`) applies to all non-upgrade runs. Label selection: no explicit `--label-filter` → `disconnected`; explicit **`smoke`** with default E2E suite → `smoke && disconnected`; explicit **`smoke`** with `TEST_DIRECTORY=v2/api` stays **`smoke`** (API specs carry no `disconnected` label). **Connected** clusters: default or explicit **`smoke`** → `smoke && !disconnected` in `test-run.sh` (matches Kind CI). Any other explicit filter is unchanged; there may be zero matching specs (e.g. Tier1 on air-gap today), and **`--fail-on-empty`** fails the lane in that case.
 
 ### Modular AIPipelines acceptance criteria (post-upgrade)
 
@@ -180,14 +270,23 @@ AIPipelines fixture, and `UpgradeVerification` receives it through `expected_pla
 
 ## Test Labels Available
 
+The legacy Ginkgo label **`Sanity`** and **`--label-filter=sanity`** are removed (Phase 2 quality gates). Migrate jobs as follows: **`smoke`** for the Smoke gate; **`Tier1`** with **`./backend/test/end2end`** for product E2E (essential + explicit Tier1 + integration—not a 1:1 Sanity rename); **`Tier1 && !UpgradePreparation && !UpgradeVerification`** with **`./backend/test/v2/api`** for normal API Tier1. Details: [PR 467](https://github.com/opendatahub-io/data-science-pipelines/pull/467) and `AGENTS.md`.
+
 Based on the default configuration:
 
-- `UpgradePreparation` - Seed DSPA API data before a product upgrade
-- `UpgradeVerification` - Verify DSPA API persistence and modular AIPipelines status after upgrade
-- `E2ECritical` - Critical end-to-end tests (default)
-- `smoke` - Basic functionality validation
-- `integration` - Integration test scenarios
-- `regression` - Regression test suite
+- `smoke` - Component-level critical tests (default for RHOAI nightly)
+- `disconnected` - Air-gapped E2E lane (subset of Smoke IRs in `e2eDisconnectedPipelinePaths`; also tagged `Smoke`; connected smoke uses `smoke && !disconnected`)
+- `Tier1` - High-priority tests excluding Smoke
+- `Tier2` - Medium- and low-priority positive tests
+- `Tier3` - Negative and destructive tests
+- `E2ECritical` - Multi-user critical lane; gate IRs also carry `smoke` or `Tier1` on the same spec (remaining `valid/critical` sweep stays `E2ECritical` + `Tier2`)
+- `integration` - Cross-component integration (also tagged Tier1; Kind CI runs `Tier1 && !integration`)
+- `gpu` - Accelerator-required E2E (also tagged Tier2; CPU/Kind Tier2 uses `Tier2 && !gpu && !dra-check`)
+- `dra-check` - DRA scheduling checks (also tagged Tier2; excluded from Kind Tier2 via `!dra-check`)
+- `WorkflowCompiler` - Compiler golden tests (also tagged Tier1; GitHub `compiler-tests.yml` keeps this label)
+- `WorkflowCompilerVisits` - Compiler visitor iteration (also tagged Tier2)
+- `UpgradePreparation` - Seed DSPA API data before a product upgrade (also tagged Tier1; standard Tier1 API jobs use `Tier1 && !UpgradePreparation && !UpgradeVerification`)
+- `UpgradeVerification` - Verify DSPA API persistence and modular AIPipelines status after upgrade (also tagged Tier1)
 
 ## Test Execution Flow
 
@@ -195,7 +294,8 @@ The test script performs these steps:
 
 1. **Environment Setup**
    - Sources environment variables from `.env`
-   - Generates random namespace suffix (e.g., `dspa-test-a1b2c3d4`)
+   - Generates a random namespace suffix except for dedicated upgrade phases
+   - Reads OperatorHub configuration to select connected or disconnected settings
    - Configures storage type (S3 or Minio)
 
 2. **Resource Deployment**
@@ -206,12 +306,13 @@ The test script performs these steps:
    - Creates RBAC resources
 
 3. **Test Execution**
-   - Waits for deployment readiness
+   - Waits for DSPA `Ready=True` within `DSPA_READY_TIMEOUT`
    - Generates API token for authentication
    - Runs Ginkgo tests with specified filters and parallelism
 
 4. **Cleanup**
-   - Removes test namespace and all resources
+   - Retains successful upgrade preparation for the verification phase
+   - Otherwise saves diagnostics and removes the owned test namespace
 
 ## Output and Results
 
@@ -264,7 +365,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --num-parallel-tests=1 \
   --label-filter="smoke"
 ```
@@ -308,7 +408,6 @@ podman run -it \
   --rm \
   --workdir=/dspa/backend/test/images \
   quay.io/opendatahub/ds-pipelines-tests:master \
-  ./test-run.sh \
   --label-filter="smoke" \
   --num-parallel-tests=5
 
