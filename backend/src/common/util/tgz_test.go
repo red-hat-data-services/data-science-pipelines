@@ -15,10 +15,47 @@
 package util
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestSaturatingAdd(t *testing.T) {
+	tests := []struct {
+		name     string
+		first    int64
+		second   int64
+		expected int64
+	}{
+		{"small values", 2, 3, 5},
+		{"adding zero", math.MaxInt64, 0, math.MaxInt64},
+		{"one below the limit", math.MaxInt64 - 1, 1, math.MaxInt64},
+		{"overflow saturates", math.MaxInt64, 1, math.MaxInt64},
+		{"large overflow saturates", math.MaxInt64 - 5, 100, math.MaxInt64},
+		{"negative addend is not saturated", 10, -3, 7},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, SaturatingAdd(test.first, test.second))
+		})
+	}
+}
+
+func TestArchiveTraversalBudget(t *testing.T) {
+	const overhead = int64(1 << 20)
+
+	assert.Equal(t, overhead, ArchiveTraversalBudget(0))
+	assert.Equal(t, int64(32<<20)+overhead, ArchiveTraversalBudget(32<<20))
+
+	// Near the int64 limit the budget saturates one below MaxInt64, so callers
+	// can still add a sentinel byte without wrapping negative.
+	for _, size := range []int64{math.MaxInt64 - overhead, math.MaxInt64 - 1, math.MaxInt64} {
+		budget := ArchiveTraversalBudget(size)
+		assert.Equal(t, int64(math.MaxInt64-1), budget)
+		assert.Equal(t, int64(math.MaxInt64), SaturatingAdd(budget, 1))
+	}
+}
 
 func TestArchiveTgzAndExtractTgz_Roundtrip(t *testing.T) {
 	expectedFiles := map[string]string{
