@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-10-29
+- Last updated: 2026-11-13
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 19)
 
 ### Maintenance (agents and contributors)
@@ -234,7 +234,13 @@ ginkgo -v ./backend/test/compiler -- -createGoldenFiles=false
 ginkgo -v ./backend/test/v2/api
 
 # Example: run only Smoke-labeled tests with ginkgo
-ginkgo -v --label-filter="Smoke" ./backend/test/v2/api
+ginkgo -v --label-filter="smoke" ./backend/test/v2/api
+
+# Standard Tier1 API gate (excludes two-phase upgrade orchestration)
+ginkgo -v --label-filter="Tier1 && !UpgradePreparation && !UpgradeVerification" ./backend/test/v2/api
+
+ginkgo -v --label-filter="Tier2" ./backend/test/v2/api
+ginkgo -v --label-filter="Tier3" ./backend/test/v2/api
 ```
 
 - End-to-end tests:
@@ -243,7 +249,20 @@ ginkgo -v --label-filter="Smoke" ./backend/test/v2/api
 ginkgo -v ./backend/test/end2end -- -namespace=kubeflow -isDebugMode=true
 ```
 
-Without `--label-filter`, `gpu`-labeled E2E tests run as well (they request accelerators) and may pend or fail on CPU-only clusters; pass `--label-filter` to limit what runs (for example `Smoke`, or `gpu` on GPU-capable clusters). NVIDIA vs AMD fixtures: pass `-gpuVendor` flag to `nvidia` (default), `amd`, or `both` so only matching IRs run (`pytorch_nvidia_gpu_availability.yaml` / `pytorch_amd_gpu_availability.yaml`). Any value other than `amd`/`both`/`all` falls back to `nvidia`.
+Without `--label-filter`, `gpu`-labeled E2E tests run as well (they request accelerators) and may pend or fail on CPU-only clusters; pass `--label-filter` to limit what runs (for example `smoke`, `Tier1`, or `gpu` on GPU-capable clusters).
+
+**E2E label filters (product vs Kind):**
+
+- Smoke: Kind CI uses `--label-filter='smoke && !disconnected'`; product Smoke lanes use `smoke` (air-gap duplicates use `disconnected`).
+- Tier1: Product E2E uses bare `--label-filter=Tier1` (essential sweep + explicit Tier1 IRs + integration/Ray on OpenShift). Kind Tier1 uses `--label-filter='Tier1 && !integration'` (no Ray CRD on Kind). IRs that multi-user **`E2ECritical`** jobs still need carry **`E2ECritical`** plus **`smoke`** or **`Tier1`** on the same spec.
+
+**API label filters (product):**
+
+- Normal Tier1 API jobs must use `--label-filter='Tier1 && !UpgradePreparation && !UpgradeVerification'`. Dedicated upgrade jobs keep `UpgradePreparation` / `UpgradeVerification` only.
+
+**Other E2E filters:**
+
+- CPU-only or Kind Tier2 runs should use `--label-filter='Tier2 && !gpu && !dra-check'` so accelerator and DRA fixtures stay out of that gate; GPU-capable product lanes can keep `--label-filter=Tier2`, and the dedicated `dra-check` lane covers DRA. NVIDIA vs AMD fixtures: pass `-gpuVendor` flag to `nvidia` (default), `amd`, or `both` so only matching IRs run (`pytorch_nvidia_gpu_availability.yaml` / `pytorch_amd_gpu_availability.yaml`). Any value other than `amd`/`both`/`all` falls back to `nvidia`.
 
 Test data is centralized under:
 
@@ -542,10 +561,12 @@ When changing an effect-heavy frontend component, add or run the smallest releva
 
 - Kind-based clusters are provisioned via the `kfp-cluster` composite action, parameterized by `k8s_version`, `pipeline_store`, `proxy`, `cache_enabled`, and optional `argo_version`.
 - The `create-cluster` and `deploy` actions are used by newer suites; `kfp-k8s` installs SDK components from source inside jobs that execute Python-based tests.
+- Direct multi-user deployment waits for the `profiles-deployment` rollout before applying KFP manifests, with a 180-second timeout.
 - `upgrade-test.yml` deploys the initial stable release in legacy mode and asserts that `default-aipipelines` is absent. It then enables the opt-in `enable_modular_architecture` deploy input only for the target deployment. That target handoff applies DSPO's modular AIPipelines fixture, enables `DSPO_ENABLEAIPIPELINESMODULECONTROLLER`, and waits for `default-aipipelines` to report `Ready` and `ProvisioningSucceeded`. The deploy action exports the fixture's platform version, and `UpgradeVerification` compares it to the module status.
 - The `deploy` action deploys optional Squid support, downloads and loads CI-built images, and preloads runtime base images used by test pods and init containers. Squid has a TCP readiness probe on port `3128` and a 120-second deployment availability wait; deployment failures print proxy pod diagnostics with a 10-second timeout per kubectl request.
 - Kind operator deployments always install cert-manager before provisioning the API server and metadata Envoy proxy certificates, including database-backed lanes with `podToPodTLS=false`: DSPO declares their Secret volumes regardless of that flag. Skipping cert-manager produces `no matches for kind "ClusterIssuer"`; missing `ds-pipelines-proxy-tls-*` or `ds-pipelines-envoy-proxy-tls-*` Secrets cause `FailedMount` and deployment timeouts. Database and internal gRPC certificates and database TLS configuration remain conditional on pod-to-pod TLS.
-- Deployment-helper unit tests: `.venv/bin/python -m unittest discover -s .github/actions/deploy -p 'test_*.py'`.
+- Deployment-helper unit tests: `.venv/bin/python -m unittest discover -s .github/actions/deploy -p 'test_*.py'`. Require `kubectl` on `PATH` for local Kustomize rendering tests; no cluster is needed.
+- The test-image runner requires `util-linux` for a separate suite process group. Parent-only TERM/INT during the suite or normal cleanup publishes the interruption report before bounded process-group shutdown and asynchronous namespace deletion; allow at least 15 seconds of container termination grace. See `backend/test/images/README.md` for shutdown bounds.
 - Operator deployment failures print DSPA conditions, issuer/certificate/request status, Secret names and types, namespace events, and the last 100 cert-manager/controller webhook log lines. Diagnostic commands have bounded timeouts and do not replace the original deployment error or print Secret data.
 - Test-failure log collection includes namespace-wide events (including events for workflow pods deleted by test cleanup) and Service/EndpointSlice addresses to help diagnose pending tasks and DNS failures.
 - API tests default to four parallel Ginkgo processes to reduce contention with the Kind control plane and pipeline pods on hosted runners. The standalone workflow-dispatch input can override this count. The E2E proxy lane sets `base_image: python:3.11` to reuse the image preloaded by deploy and avoid an ECR pull during the test.
@@ -666,8 +687,8 @@ docformatter --check --recursive sdk/python/ --exclude "compiler_test.py"
 - Run SDK tests: `pytest -v sdk/python/kfp`
 - Run backend unit tests: `go test -v $(go list ./backend/... | grep -v backend/test/)`
 - Run compiler tests: `ginkgo -v ./backend/test/compiler`
-- Run API tests: `ginkgo -v --label-filter="Smoke" ./backend/test/v2/api`
-- Run E2E tests: `ginkgo -v ./backend/test/end2end -- -namespace=kubeflow` (CPU-only: add `--label-filter`, e.g. `Smoke`, to avoid `gpu` tests)
+- Run API tests: `ginkgo -v --label-filter="smoke" ./backend/test/v2/api`
+- Run E2E tests: `ginkgo -v ./backend/test/end2end -- -namespace=kubeflow` (CPU-only: add `--label-filter`, e.g. `smoke` or `Tier1`, to avoid `gpu` tests)
 - Check formatting:
   `yapf --recursive --diff sdk/python/ && pycln --check sdk/python && isort --check --profile google sdk/python`
 - Frontend dev server: `cd frontend && npm start`
@@ -696,6 +717,7 @@ docformatter --check --recursive sdk/python/ --exclude "compiler_test.py"
 
 ### Common error patterns and quick fixes
 
+- Direct multi-user setup fails with `no matching resources found` immediately after creating `profiles-deployment`: wait for the Deployment rollout, since a pod-label wait can run before the controller creates its pods.
 - Protobuf generation fails with "protoc: command not found": use the Make targets that run this in a container.
 - Protobuf generation fails under SELinux enforcing: temporarily disable with `sudo setenforce 0`; re-enable after.
 - API client generation fails with Docker errors (for example permission denied to Docker socket): ensure Docker is running and your user can access the Docker daemon.
