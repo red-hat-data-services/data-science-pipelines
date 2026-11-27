@@ -409,6 +409,7 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKuber
 
 	runtimeMux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(grpcCustomMatcher),
+		runtime.WithDisableHTTPMethodOverride(),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, common.CustomMarshaler()))
 	register := func(handler RegisterHttpHandlerFromEndpoint, serviceName string) {
 		if err := registerHTTPHandlerFromEndpoint(ctx, handler, serviceName, runtimeMux, tlsCfg); err != nil {
